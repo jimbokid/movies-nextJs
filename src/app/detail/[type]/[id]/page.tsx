@@ -124,6 +124,7 @@ export default async function MovieDetailPage({params}: MovieDetailPageProps) {
                                     href={`/detail/${params.type}/${movie.id}`}
                                     key={movie.id}
                                     className="relative aspect-[2/3] rounded-lg overflow-hidden group"
+                                    prefetch
                                 >
                                     <Image
                                         src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}

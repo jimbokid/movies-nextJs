@@ -71,6 +71,7 @@ export default async function PersonDetailPage({params}: Props) {
                                     key={movie.id}
                                     href={`/detail/movie/${movie.id}`}
                                     className="group relative bg-gray-800 rounded-xl overflow-hidden shadow hover:scale-105 transition-transform duration-300"
+                                    prefetch
                                 >
                                     {movie.poster_path ? (
                                         <Image

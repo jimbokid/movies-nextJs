@@ -41,7 +41,7 @@ This project demonstrates a professional production-ready setup combining **perf
 
 ## 🧠 About the Author
 
-**Yuriy Kovalchuk** — Frontend Developer  
+**Yurii Kovalchuk** — Frontend Developer  
 🔹 10+ years in frontend, 4 years as **Lead Frontend Developer** in a European product company  
 🔹 Certificates: *Microsoft Exam 480* & *Next.js Fundamentals*  
 🔹 Open for new collaborations and gig contracts

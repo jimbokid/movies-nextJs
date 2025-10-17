@@ -4,16 +4,16 @@ import {useDashboard} from "@/hooks/useDashboard";
 import {useRef} from "react";
 import Movie from "@/app/(home)/Movie";
 import InfiniteScroll from "react-infinite-scroll-component";
+import Loading from "@/app/(home)/loading";
 
 export default function DashboardPage() {
     const {data, fetchNextPage, isLoading, isError} = useDashboard();
     const loaderRef = useRef<HTMLDivElement | null>(null);
 
-    if (isLoading && !data)
+
+    if (isLoading && data.results.length === 0)
         return (
-            <div className="flex items-center justify-center min-h-screen text-gray-500">
-                Loading movies...
-            </div>
+            <Loading/>
         );
 
     if (isError)
@@ -37,7 +37,7 @@ export default function DashboardPage() {
                     hasMore={data?.results.length < data?.total_pages}
                     loader={false}
                 >
-                    <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    <div className="grid gap-6 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 
                         {data?.results.map((movie) => (
                             <Movie

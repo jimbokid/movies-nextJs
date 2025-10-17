@@ -3,6 +3,7 @@ import {Geist, Geist_Mono} from "next/font/google";
 import "./globals.css";
 import ReactQueryProvider from "@/providers/ReactQueryProvider";
 import Header from "@/components/Header";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -29,7 +30,8 @@ export default function RootLayout({
         <body
             className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-        <Header />
+        <Header/>
+        <ScrollToTop/>
         <main className="min-h-screen ">
             <ReactQueryProvider>{children}</ReactQueryProvider>
         </main>

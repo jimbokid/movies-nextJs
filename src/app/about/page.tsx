@@ -48,7 +48,7 @@ export default function AboutPage() {
 
             {/* Footer note */}
             <p className="text-gray-500 text-sm mt-12">
-                © {new Date().getFullYear()} Yuriy Kovalchuk — Open for work
+                © {new Date().getFullYear()} Yurii Kovalchuk — Open for work
             </p>
         </div>
     );

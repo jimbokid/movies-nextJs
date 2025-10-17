@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎬 Movie Explorer — Demo Project
 
-## Getting Started
+A modern **Next.js 14** demo project showcasing server-side rendered movie pages, lazy-loaded lists, and clean, responsive UI built with **Tailwind CSS**.  
+This project demonstrates a professional production-ready setup combining **performance**, **code clarity**, and **developer experience**.
 
-First, run the development server:
+---
+
+## 🚀 Tech Stack
+
+**Frontend:**
+- ⚛️ React (Hooks, Context API)
+- 🔥 Next.js 14 (App Router)
+- 💨 Tailwind CSS
+- 🌀 TypeScript
+- ⚙️ Axios (API requests)
+- 🌙 SSR + CSR hybrid rendering
+- 🧩 Dynamic routes for movie details
+
+**Tooling & Build:**
+- ESLint / Prettier setup
+- Modern project structure
+- Reusable components & helpers
+
+---
+
+## ⚡️ Features
+
+- **Server-Side Rendered (SSR)** movie detail pages
+- **Lazy-loaded** movie lists with infinite scroll
+- **Clean, responsive** UI with Tailwind
+- **Reusable components** for easy scalability
+- **Static "About" page** with personal information and contact links
+
+---
+
+## 🌐 Live Demo
+
+> Coming soon — this demo is designed for deployment on **Vercel**.
+
+---
+
+## 🧠 About the Author
+
+**Yuriy Kovalchuk** — Frontend Developer  
+🔹 10+ years in frontend, 4 years as **Lead Frontend Developer** in a European product company  
+🔹 Certificates: *Microsoft Exam 480* & *Next.js Fundamentals*  
+🔹 Open for new collaborations and gig contracts
+
+📎 [GitHub](https://github.com/jimbokid)  
+💼 [LinkedIn](https://www.linkedin.com/in/kovalchukyuriy/)
+
+---
+
+## ⚙️ Tech Highlights
+
+JavaScript (ES6+), TypeScript, React.js (Hooks, Context API, Router), Next.js, Redux / Redux Toolkit, Styled-components, Material UI (v4–v5), Tailwind, SCSS, PostCSS, PWA, Service Workers, GraphQL (Apollo), REST (Axios, React Query), Storybook, Webpack, Jest, Git Flow, Azure DevOps CI/CD, Magento (Headless / PWA Studio), Adobe AEM, Figma, Adobe XD.
+
+---
+
+## 🧩 Getting Started
 
 ```bash
+# 1. Clone repository
+git clone https://github.com/jimbokid/movie-explorer-demo.git
+
+# 2. Navigate to project folder
+cd movie-explorer-demo
+
+# 3. Install dependencies
+npm install
+
+# 4. Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

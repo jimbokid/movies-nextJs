@@ -35,7 +35,7 @@ This project demonstrates a professional production-ready setup combining **perf
 
 ## 🌐 Live Demo
 
-> Coming soon — this demo is designed for deployment on **Vercel**.
+> 👨🏻‍💻 [Live Demo Application](https://movies-next-js-tau.vercel.app/)
 
 ---
 
@@ -61,7 +61,7 @@ JavaScript (ES6+), TypeScript, React.js (Hooks, Context API, Router), Next.js, R
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/jimbokid/movie-explorer-demo.git
+git clone https://github.com/jimbokid/movies-nextJs.git
 
 # 2. Navigate to project folder
 cd movie-explorer-demo

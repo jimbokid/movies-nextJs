@@ -4,21 +4,21 @@ import {MovieDetailPayload} from "@/types/movie";
 import Link from "next/link";
 
 interface MovieDetailPageProps {
-    params: {
+    params: Promise<{
         id: string;
         type: string;
-    };
+    }>;
 }
 
 export default async function MovieDetailPage({params}: MovieDetailPageProps) {
+    const {id, type} = await params;
+
     const data: MovieDetailPayload = await MovieDetail.getMovieDetail(
-        params.id,
-        params.type
+        id,
+        type
     );
 
     const movie = data.data;
-
-    console.log(`data`, data)
 
     return (
         <main className="min-h-screen bg-gray-950 text-gray-100">
@@ -121,7 +121,7 @@ export default async function MovieDetailPage({params}: MovieDetailPageProps) {
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4">
                             {data.similar.results.slice(0, 12).map((movie) => (
                                 <Link
-                                    href={`/detail/${params.type}/${movie.id}`}
+                                    href={`/detail/movie/${movie.id}`}
                                     key={movie.id}
                                     className="relative aspect-[2/3] rounded-lg overflow-hidden group"
                                     prefetch

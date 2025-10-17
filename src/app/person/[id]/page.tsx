@@ -21,8 +21,6 @@ export default async function PersonDetailPage({params}: Props) {
 
     const {data: person, movies} = data;
 
-    console.log(data)
-
     return (
         <div className="bg-gray-950">
             <div className="max-w-5xl mx-auto px-4 py-12 text-white ">

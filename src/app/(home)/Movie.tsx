@@ -18,7 +18,6 @@ const Movie: React.FC<MovieProps> = ({movie, type = "movie"}) => {
         <Link
             href={linkHref}
             className="group aspect-[2/3] relative overflow-hidden rounded-2xl bg-neutral-800 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
-            prefetch
         >
             {/* Poster */}
             <div className="relative w-full h-full">

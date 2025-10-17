@@ -10,7 +10,6 @@ export default function DashboardPage() {
     const {data, fetchNextPage, isLoading, isError} = useDashboard();
     const loaderRef = useRef<HTMLDivElement | null>(null);
 
-
     if (isLoading && data.results.length === 0)
         return (
             <Loading/>

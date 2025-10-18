@@ -6,7 +6,7 @@ export default function Header() {
             <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
                 {/* Logo / Home link */}
                 <Link href="/" className="text-xl font-semibold text-white hover:text-yellow-400 transition-colors">
-                    🎬 MovieBase
+                    🎬 CineView
                 </Link>
 
                 {/* Navigation links (optional) */}

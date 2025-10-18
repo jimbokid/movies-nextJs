@@ -30,7 +30,7 @@ export const metadata: Metadata = {
         siteName: "CineView",
         images: [
             {
-                url: "/og-image.png",
+                url: "/og-image.jpg",
                 width: 1200,
                 height: 800,
                 alt: "CineView - Discover Your Favorite Movies",

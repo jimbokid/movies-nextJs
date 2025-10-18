@@ -30,9 +30,9 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
             description: person.biography,
             images: [
                 {
-                    url: `https://image.tmdb.org/t/p/w400${person.profile_path}`,
-                    width: 800,
-                    height: 1200,
+                    url: `https://image.tmdb.org/t/p/w500${person.profile_path}`,
+                    width: 500,
+                    height: 750,
                     alt: person.name,
                 },
             ],

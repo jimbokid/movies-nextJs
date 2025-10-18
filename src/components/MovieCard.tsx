@@ -10,7 +10,7 @@ interface MovieProps {
     type?: string; // e.g. "detail" or "tv"
 }
 
-const Movie: React.FC<MovieProps> = ({movie, type = "movie"}) => {
+const MovieCard: React.FC<MovieProps> = ({movie, type = "movie"}) => {
     const title = movie.title || movie.name || movie.original_name;
     const linkHref = `/detail/${type}/${movie.id}`;
 
@@ -47,4 +47,4 @@ const Movie: React.FC<MovieProps> = ({movie, type = "movie"}) => {
     );
 };
 
-export default Movie;
+export default MovieCard;

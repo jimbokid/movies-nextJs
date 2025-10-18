@@ -3,9 +3,48 @@ import Link from "next/link";
 import moment from "moment";
 import {getPersonalDetail} from "@/services/personalDetail";
 import React from "react";
+import {Metadata} from "next";
 
 interface Props {
     params: { id: string };
+}
+
+export async function generateMetadata({params}: Props): Promise<Metadata> {
+    const data = await getPersonalDetail(params.id);
+
+    const {data: person} = data;
+
+
+    if (!person) {
+        return {
+            title: "Person not found | CineView",
+            description: "Sorry, this movie could not be found.",
+        };
+    }
+
+    return {
+        title: `${person.name} | CineView`,
+        description: person.biography,
+        openGraph: {
+            title: `${person.name} | CineView`,
+            description: person.biography,
+            images: [
+                {
+                    url: `https://image.tmdb.org/t/p/w400${person.profile_path}`,
+                    width: 800,
+                    height: 1200,
+                    alt: person.name,
+                },
+            ],
+            type: "website",
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: person.name,
+            description: person.biography,
+            images: [`https://image.tmdb.org/t/p/w400${person.profile_path}`],
+        },
+    };
 }
 
 export default async function PersonDetailPage({params}: Props) {

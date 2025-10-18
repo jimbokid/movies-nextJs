@@ -2,12 +2,56 @@ import Image from "next/image";
 import {MovieDetail} from "@/services/movie";
 import {MovieDetailPayload} from "@/types/movie";
 import Link from "next/link";
+import MovieCard from "@/components/MovieCard";
+import {Metadata} from "next";
 
 interface MovieDetailPageProps {
     params: Promise<{
         id: string;
         type: string;
     }>;
+}
+
+export async function generateMetadata({params}: MovieDetailPageProps): Promise<Metadata> {
+    const {id, type} = await params;
+
+    const data: MovieDetailPayload = await MovieDetail.getMovieDetail(
+        id,
+        type
+    );
+
+    const movie = data.data;
+
+    if (!movie) {
+        return {
+            title: "Movie not found | CineView",
+            description: "Sorry, this movie could not be found.",
+        };
+    }
+
+    return {
+        title: `${movie.title} | CineView`,
+        description: movie.overview,
+        openGraph: {
+            title: `${movie.title} | CineView`,
+            description: movie.overview,
+            images: [
+                {
+                    url: `https://image.tmdb.org/t/p/original${movie.backdrop_path}`, // absolute URL required
+                    width: 800,
+                    height: 1200,
+                    alt: movie.title,
+                },
+            ],
+            type: "website",
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: movie.title,
+            description: movie.overview,
+            images: [`https://image.tmdb.org/t/p/original${movie.backdrop_path}`],
+        },
+    };
 }
 
 export default async function MovieDetailPage({params}: MovieDetailPageProps) {
@@ -120,23 +164,10 @@ export default async function MovieDetailPage({params}: MovieDetailPageProps) {
                         <h2 className="text-2xl font-semibold mb-4">Similar Movies</h2>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4">
                             {data.similar.results.slice(0, 12).map((movie) => (
-                                <Link
-                                    href={`/detail/movie/${movie.id}`}
-                                    key={movie.id}
-                                    className="relative aspect-[2/3] rounded-lg overflow-hidden group"
-                                    prefetch
-                                >
-                                    <Image
-                                        src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                                        alt={movie.title}
-                                        fill
-                                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                    <div
-                                        className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex items-end">
-                                        <p className="text-xs text-white">{movie.title}</p>
-                                    </div>
-                                </Link>
+                                <MovieCard
+                                    key={`${movie.id}-${movie.title}`}
+                                    movie={movie}
+                                />
                             ))}
                         </div>
                     </div>

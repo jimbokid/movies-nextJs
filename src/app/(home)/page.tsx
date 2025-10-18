@@ -2,9 +2,9 @@
 
 import {useDashboard} from "@/hooks/useDashboard";
 import {useRef} from "react";
-import Movie from "@/app/(home)/Movie";
 import InfiniteScroll from "react-infinite-scroll-component";
 import Loading from "@/app/(home)/loading";
+import MovieCard from "@/components/MovieCard";
 
 export default function DashboardPage() {
     const {data, fetchNextPage, isLoading, isError} = useDashboard();
@@ -39,7 +39,7 @@ export default function DashboardPage() {
                     <div className="grid gap-6 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 
                         {data?.results.map((movie) => (
-                            <Movie
+                            <MovieCard
                                 key={`${movie.id}-${movie.title}`}
                                 movie={movie}
                             />

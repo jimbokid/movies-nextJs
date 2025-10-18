@@ -64,7 +64,7 @@ JavaScript (ES6+), TypeScript, React.js (Hooks, Context API, Router), Next.js, R
 git clone https://github.com/jimbokid/movies-nextJs.git
 
 # 2. Navigate to project folder
-cd movie-explorer-demo
+cd movies-nextJs
 
 # 3. Install dependencies
 npm install

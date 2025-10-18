@@ -1,5 +1,5 @@
-import axios from "axios";
-import {DashboardPayload} from "@/types/dashboard";
+import axios from 'axios';
+import { DashboardPayload } from '@/types/dashboard';
 import {
     API_PATH,
     API_TOKEN,
@@ -8,7 +8,7 @@ import {
     LANGUAGE,
     REGION,
     START_DATE_POPULAR,
-} from "@/constants/appConstants";
+} from '@/constants/appConstants';
 
 export const Dashboard = {
     getDashboard: (page: number): Promise<DashboardPayload> =>
@@ -18,12 +18,12 @@ export const Dashboard = {
                     api_key: API_TOKEN,
                     language: LANGUAGE,
                     region: REGION,
-                    sort_by: "popularity.desc",
+                    sort_by: 'popularity.desc',
                     include_adult: INCLUDE_ADULT,
                     page,
                     primary_release_year: CURRENT_YEAR,
-                    primary_release_date: {lte: START_DATE_POPULAR},
+                    primary_release_date: { lte: START_DATE_POPULAR },
                 },
             })
-            .then((res) => res.data),
+            .then(res => res.data),
 };

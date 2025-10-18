@@ -1,4 +1,4 @@
-import {MovieItem} from "@/types/dashboard";
+import { MovieItem } from '@/types/dashboard';
 
 export interface Person {
     id: string;
@@ -25,7 +25,7 @@ export interface KeywordItem {
     name: string;
 }
 
-export type Genres = Array<GenreItem>
+export type Genres = Array<GenreItem>;
 
 export interface MovieDetail {
     title: string;

@@ -1,4 +1,4 @@
-import { MovieItem } from "./dashboard";
+import { MovieItem } from './dashboard';
 
 export interface PersonalData {
     name: string;

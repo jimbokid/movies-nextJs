@@ -13,7 +13,10 @@ export default function LoadingDetailPage() {
                                 {Array(3)
                                     .fill(0)
                                     .map((_, i) => (
-                                        <div key={i} className="h-5 w-20 bg-gray-800 rounded-full" />
+                                        <div
+                                            key={i}
+                                            className="h-5 w-20 bg-gray-800 rounded-full"
+                                        />
                                     ))}
                             </div>
                         </div>
@@ -48,10 +51,7 @@ export default function LoadingDetailPage() {
                         {Array(10)
                             .fill(0)
                             .map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="flex-shrink-0 w-32 space-y-2"
-                                >
+                                <div key={i} className="flex-shrink-0 w-32 space-y-2">
                                     <div className="w-32 h-48 bg-gray-800 rounded-lg" />
                                     <div className="h-3 w-24 bg-gray-800 rounded mx-auto" />
                                     <div className="h-2 w-16 bg-gray-800 rounded mx-auto" />
@@ -67,10 +67,7 @@ export default function LoadingDetailPage() {
                         {Array(12)
                             .fill(0)
                             .map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="aspect-[2/3] bg-gray-800 rounded-lg"
-                                />
+                                <div key={i} className="aspect-[2/3] bg-gray-800 rounded-lg" />
                             ))}
                     </div>
                 </div>

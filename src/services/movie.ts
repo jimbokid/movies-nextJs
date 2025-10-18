@@ -1,11 +1,7 @@
-import axios from "axios";
-import {
-    API_PATH,
-    API_TOKEN,
-    LANGUAGE,
-} from "@/constants/appConstants";
-import {genreGroup} from "@/utils/movieDetailHelpers";
-import {MovieDetailPayload} from "@/types/movie";
+import axios from 'axios';
+import { API_PATH, API_TOKEN, LANGUAGE } from '@/constants/appConstants';
+import { genreGroup } from '@/utils/movieDetailHelpers';
+import { MovieDetailPayload } from '@/types/movie';
 
 export const MovieDetail = {
     async getMovieDetail(id: string, type: string): Promise<MovieDetailPayload> {
@@ -20,24 +16,17 @@ export const MovieDetail = {
                 `${API_PATH}${type}/${id}/keywords`,
             ];
 
-            const requests = urls.map((url) =>
+            const requests = urls.map(url =>
                 axios.get(url, {
                     params: {
                         api_key: API_TOKEN,
                         language: LANGUAGE,
                     },
-                })
+                }),
             );
 
-            const [
-                movie,
-                similar,
-                credits,
-                images,
-                genre,
-                videos,
-                keywords,
-            ] = await axios.all(requests);
+            const [movie, similar, credits, images, genre, videos, keywords] =
+                await axios.all(requests);
 
             const genreList: { [id: string]: string } = genreGroup(genre.data.genres);
 
@@ -51,8 +40,8 @@ export const MovieDetail = {
                 keywords: keywords.data.keywords,
             };
         } catch (error) {
-            console.error("Failed to fetch detail details:", error);
-            throw new Error("Movie detail fetch failed");
+            console.error('Failed to fetch detail details:', error);
+            throw new Error('Movie detail fetch failed');
         }
     },
 };

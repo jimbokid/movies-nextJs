@@ -93,7 +93,7 @@ export default async function PersonDetailPage({params}: Props) {
                     </div>
 
                     {person.biography && (
-                        <div className="mt-6 max-w-3xl text-gray-300 leading-relaxed text-center">
+                        <div className="mt-6 text-gray-300 leading-relaxed">
                             <p>{person.biography}</p>
                         </div>
                     )}

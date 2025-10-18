@@ -22,9 +22,23 @@ export default function AboutPage() {
             {/* Experience */}
             <div className="bg-neutral-800 rounded-xl shadow-lg p-6 max-w-3xl text-left text-gray-200 mb-6">
                 <ul className="list-disc list-inside space-y-2">
-                    <li>10+ years in frontend development, 4 years as Lead Frontend Developer in a European product</li>
-                    <li>Certificates: Microsoft Exam 480 & Next.js Fundamentals</li>
-                    <li>Available for freelance / gig-contract collaboration</li>
+                    <li>React Developer since 2017, experienced with Hooks, Context API, useCallback, Redux / Redux
+                        Toolkit, Styled-components, Storybook, React Router, Axios, React Query, React Hook Form,
+                        Formik, React Native, WebSocket, and more.
+                    </li>
+                    <li>Skilled in building scalable, high-performance applications, including complex eCommerce and CMS
+                        solutions, headless architectures, and PWA platforms.
+                    </li>
+                    <li>Strong expertise in JavaScript core concepts, TypeScript, and component-driven development.</li>
+                    <li>Proficient in Agile/SCRUM/Kanban workflows and committed to clean code, testing, and
+                        maintainable architecture.
+                    </li>
+                    <li>Experienced in working closely with design, content, and executive teams to deliver polished,
+                        user-focused products.
+                    </li>
+                    <li>Speaker at CoreCamp conference; finalist and winner of Ukrainian Dev Challenge IX & XI
+                        (Frontend, Pro Category).
+                    </li>
                 </ul>
             </div>
 

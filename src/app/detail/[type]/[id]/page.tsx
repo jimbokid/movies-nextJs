@@ -77,7 +77,7 @@ export default async function MovieDetailPage({params}: MovieDetailPageProps) {
                 />
                 <div
                     className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-gray-950/80 via-gray-950/30 to-transparent px-4 py-10">
-                    <div className="max-w-6xl mx-auto text-left">
+                    <div className="max-w-5xl mx-auto text-left w-full">
                         <h1 className="text-4xl font-bold mb-3">{movie.title || movie.original_name}</h1>
                         <div className="flex items-center flex-wrap gap-3 text-sm text-gray-300">
                             <p>

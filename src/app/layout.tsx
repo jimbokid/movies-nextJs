@@ -1,4 +1,4 @@
-import type {Metadata} from "next";
+import type {Metadata, Viewport} from "next";
 import {Geist, Geist_Mono} from "next/font/google";
 import "./globals.css";
 import ReactQueryProvider from "@/providers/ReactQueryProvider";
@@ -42,6 +42,10 @@ export const metadata: Metadata = {
         site: "@cineview",
     },
 };
+
+export const viewport: Viewport = {
+    themeColor: '#171717',
+}
 
 export default function RootLayout({
                                        children,

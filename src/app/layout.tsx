@@ -4,6 +4,7 @@ import './globals.css';
 import ReactQueryProvider from '@/providers/ReactQueryProvider';
 import Header from '@/components/Header';
 import ScrollToTop from '@/components/ScrollToTop';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -55,6 +56,7 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950`}>
+                <SpeedInsights />
                 <ScrollToTop />
                 <Header />
                 <main className="min-h-screen ">

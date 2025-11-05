@@ -3,8 +3,8 @@
 import { useSearchPage } from '@/hooks/useSearchPage';
 import { useRef } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
-import Loading from '@/app/(home)/loading';
 import MovieCard from '@/components/MovieCard';
+import LoadingSearchPage from '@/app/search/[searchType]/[id]/[name]/loading';
 
 interface SearchPageProps {
     params: {
@@ -37,7 +37,9 @@ export default function SearchPage({ params }: SearchPageProps) {
             title = `Results for "${decodedName}"`;
     }
 
-    if (isLoading && data.results.length === 0) return <Loading />;
+    if (isLoading && data.results.length === 0) {
+        return <LoadingSearchPage title={title} />;
+    }
 
     if (isError)
         return (

@@ -12,7 +12,7 @@ export const useDashboard = () => {
         getNextPageParam: lastPage => {
             if (lastPage.page < lastPage.total_pages) return lastPage.page + 1;
             return undefined;
-        },
+        }
     });
 
     const allResults = data?.pages.flatMap(page => page.results) ?? [];

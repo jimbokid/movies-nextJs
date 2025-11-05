@@ -4,18 +4,20 @@ export default function LoadingDetailPage() {
             {/* Header placeholder */}
             <section className="relative w-full h-[40vh] bg-gray-900 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-950/80 via-gray-950/30 to-transparent px-4 py-10 flex flex-col justify-end">
-                    <div className="max-w-6xl mx-auto space-y-3">
-                        <div className="h-10 w-1/2 bg-gray-800 rounded" />
-                        <div className="flex gap-3 flex-wrap">
+                    <div className="max-w-6xl px-0 sm:px-4 mx-auto text-left w-full space-y-3">
+                        {/* Title */}
+                        <div className="h-10 w-2/3 bg-gray-800 rounded" />
+                        {/* Rating + date + genres chips */}
+                        <div className="flex flex-wrap gap-3 items-center">
                             <div className="h-4 w-16 bg-gray-800 rounded" />
                             <div className="h-4 w-24 bg-gray-800 rounded" />
-                            <div className="flex gap-2">
-                                {Array(3)
+                            <div className="flex flex-wrap gap-2">
+                                {Array(4)
                                     .fill(0)
                                     .map((_, i) => (
                                         <div
                                             key={i}
-                                            className="h-5 w-20 bg-gray-800 rounded-full"
+                                            className="h-6 w-20 bg-gray-800 rounded-full"
                                         />
                                     ))}
                             </div>
@@ -34,6 +36,21 @@ export default function LoadingDetailPage() {
                             .fill(0)
                             .map((_, i) => (
                                 <div key={i} className="h-4 w-full bg-gray-800 rounded" />
+                            ))}
+                    </div>
+                </div>
+
+                {/* Keywords */}
+                <div className="space-y-3">
+                    <div className="h-7 w-1/4 bg-gray-800 rounded" />
+                    <div className="flex flex-wrap gap-2">
+                        {Array(8)
+                            .fill(0)
+                            .map((_, i) => (
+                                <div
+                                    key={i}
+                                    className="h-6 w-24 bg-gray-800 rounded-full"
+                                />
                             ))}
                     </div>
                 </div>
@@ -67,7 +84,10 @@ export default function LoadingDetailPage() {
                         {Array(12)
                             .fill(0)
                             .map((_, i) => (
-                                <div key={i} className="aspect-[2/3] bg-gray-800 rounded-lg" />
+                                <div
+                                    key={i}
+                                    className="aspect-[2/3] bg-gray-800 rounded-lg"
+                                />
                             ))}
                     </div>
                 </div>

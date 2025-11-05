@@ -70,7 +70,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                     className="object-cover opacity-40"
                 />
                 <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-gray-950/80 via-gray-950/30 to-transparent px-4 py-10">
-                    <div className="max-w-5xl mx-auto text-left w-full">
+                    <div className="max-w-6xl px-0 sm:px-4 mx-auto text-left w-full">
                         <h1 className="text-4xl font-bold mb-3">
                             {movie.title || movie.original_name}
                         </h1>
@@ -86,12 +86,16 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                             )}
                             <div className="flex flex-wrap gap-2">
                                 {movie.genres.map(g => (
-                                    <span
+                                    <Link
                                         key={g.id}
-                                        className="bg-gray-800/70 px-3 py-1 rounded-full text-xs"
+                                        href={`/search/searchByGenre/${g.id}/${encodeURIComponent(
+                                            g.name,
+                                        )}`}
+                                        className="inline-flex items-center rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-200 hover:bg-gray-800 hover:border-gray-500 transition"
+                                        prefetch
                                     >
                                         {g.name}
-                                    </span>
+                                    </Link>
                                 ))}
                             </div>
                         </div>
@@ -106,6 +110,26 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                     <h2 className="text-2xl font-semibold mb-3">Overview</h2>
                     <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
                 </div>
+
+                {data.keywords && data.keywords.length > 0 && (
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-semibold mb-3">Keywords</h2>
+                        <div className="flex flex-wrap gap-2">
+                            {data.keywords.map(keyword => (
+                                <Link
+                                    key={keyword.id}
+                                    href={`/search/searchByKeyword/${keyword.id}/${encodeURIComponent(
+                                        keyword.name
+                                    )}`}
+                                    className="inline-flex items-center rounded-full bg-gray-800/60 px-3 py-1 text-xs text-gray-200 hover:bg-gray-700 transition"
+                                    prefetch
+                                >
+                                    {keyword.name}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Videos */}
                 {data.videos.results.length > 0 && (

@@ -24,10 +24,15 @@ const MovieCard: React.FC<MovieProps> = ({ movie, type = 'movie' }) => {
             <div className="relative w-full h-full">
                 {movie.poster_path ? (
                     <Image
-                        src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                        src={`https://image.tmdb.org/t/p/w342${movie.poster_path}`}
                         alt={title}
                         fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        sizes="
+                            (max-width: 480px) 45vw,
+                            (max-width: 768px) 33vw,
+                            (max-width: 1200px) 25vw,
+                            20vw
+                        "
                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                 ) : (

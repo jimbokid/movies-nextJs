@@ -10,6 +10,9 @@ export default function DashboardPage() {
     const { data, fetchNextPage, isLoading, isError } = useDashboard();
     const loaderRef = useRef<HTMLDivElement | null>(null);
 
+    console.log(`data.results.length`,data.results.length)
+    console.log(`isLoading`,isLoading)
+
     if (isLoading && data.results.length === 0) return <Loading />;
 
     if (isError)
@@ -20,7 +23,7 @@ export default function DashboardPage() {
         );
 
     return (
-        <main className="min-h-screen bg-neutral-900 text-white">
+        <main className="min-h-screen bg-gray-950 text-white">
             <div className="max-w-7xl mx-auto px-4 py-10">
                 <h1 className="text-3xl font-bold mb-8 tracking-tight">Trending Movies 🎥</h1>
 

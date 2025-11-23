@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import ScrollToTop from '@/components/ScrollToTop';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import SearchHotkey from '@/components/SearchHotkey';
+import { Analytics } from '@vercel/analytics/next';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -57,6 +58,7 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950`}>
+                <Analytics />
                 <SearchHotkey />
                 <SpeedInsights />
                 <ScrollToTop />

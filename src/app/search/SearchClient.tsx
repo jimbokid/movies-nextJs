@@ -97,21 +97,6 @@ export default function SearchClient() {
                     </div>
                 </div>
 
-                {/* Skeleton */}
-                {showInitialSkeleton && (
-                    <div className="animate-pulse">
-                        <div className="grid gap-6 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                            {Array.from({ length: 10 }).map((_, i) => (
-                                <div key={i} className="space-y-3">
-                                    <div className="aspect-[2/3] bg-gray-800 rounded-2xl" />
-                                    <div className="h-4 w-3/4 bg-gray-800 rounded" />
-                                    <div className="h-3 w-1/2 bg-gray-800 rounded" />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 {/* Error */}
                 {isError && !showInitialSkeleton && (
                     <div className="flex items-center justify-center min-h-[30vh] text-red-400">

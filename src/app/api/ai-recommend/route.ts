@@ -20,18 +20,22 @@ function parseAiMovies(content: string): AiRecommendedMovie[] {
         const parsed = JSON.parse(content);
         if (Array.isArray(parsed)) {
             return parsed
-                .map(item => ({
-                    title: String(item.title ?? '').trim(),
-                    tmdb_id: typeof item.tmdb_id === 'number' ? item.tmdb_id : undefined,
-                    reason: String(item.reason ?? '').trim(),
-                    poster_path: typeof item.poster_path === 'string' ? item.poster_path : undefined,
-                    release_year:
+                .map(item => {
+                    const releaseYear =
                         typeof item.release_year === 'number'
                             ? item.release_year
                             : typeof item.release_year === 'string'
                               ? Number.parseInt(item.release_year, 10)
-                              : undefined,
-                }))
+                              : undefined;
+
+                    return {
+                        title: String(item.title ?? '').trim(),
+                        tmdb_id: typeof item.tmdb_id === 'number' ? item.tmdb_id : undefined,
+                        reason: String(item.reason ?? '').trim(),
+                        poster_path: typeof item.poster_path === 'string' ? item.poster_path : undefined,
+                        release_year: Number.isFinite(releaseYear) ? releaseYear : undefined,
+                    } satisfies AiRecommendedMovie;
+                })
                 .filter(item => item.title && item.reason);
         }
     } catch (error) {
@@ -40,7 +44,13 @@ function parseAiMovies(content: string): AiRecommendedMovie[] {
     return [];
 }
 
-async function searchTmdbMovie(title: string): Promise<AiRecommendedMovie | null> {
+interface TmdbMovieMeta {
+    id: number;
+    poster_path?: string | null;
+    release_date?: string | null;
+}
+
+async function searchTmdbMovie(title: string, releaseYear?: number): Promise<TmdbMovieMeta | null> {
     if (!TMDB_API_KEY) return null;
 
     const url = new URL('https://api.themoviedb.org/3/search/movie');
@@ -49,6 +59,9 @@ async function searchTmdbMovie(title: string): Promise<AiRecommendedMovie | null
     url.searchParams.set('include_adult', 'false');
     url.searchParams.set('language', 'en-US');
     url.searchParams.set('page', '1');
+    if (releaseYear) {
+        url.searchParams.set('primary_release_year', String(releaseYear));
+    }
 
     try {
         const response = await fetch(url.toString(), { next: { revalidate: 0 } });
@@ -58,11 +71,9 @@ async function searchTmdbMovie(title: string): Promise<AiRecommendedMovie | null
         if (!match) return null;
 
         return {
-            title: match.title,
-            tmdb_id: match.id,
-            reason: '',
-            poster_path: match.poster_path ?? undefined,
-            release_year: match.release_date ? Number.parseInt(match.release_date.slice(0, 4), 10) : undefined,
+            id: match.id,
+            poster_path: match.poster_path,
+            release_date: match.release_date,
         };
     } catch (error) {
         console.error('TMDB lookup failed', error);
@@ -70,19 +81,48 @@ async function searchTmdbMovie(title: string): Promise<AiRecommendedMovie | null
     }
 }
 
+async function fetchTmdbDetails(tmdbId: number): Promise<TmdbMovieMeta | null> {
+    if (!TMDB_API_KEY) return null;
+
+    const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}`);
+    url.searchParams.set('api_key', TMDB_API_KEY);
+    url.searchParams.set('language', 'en-US');
+
+    try {
+        const response = await fetch(url.toString(), { next: { revalidate: 0 } });
+        if (!response.ok) return null;
+        const data = await response.json();
+        return {
+            id: data.id,
+            poster_path: data.poster_path,
+            release_date: data.release_date,
+        };
+    } catch (error) {
+        console.error('TMDB details lookup failed', error);
+        return null;
+    }
+}
+
 async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovie> {
-    if (movie.tmdb_id && movie.poster_path && movie.release_year) {
+    if (!TMDB_API_KEY) return movie;
+
+    const candidateById = movie.tmdb_id ? await fetchTmdbDetails(movie.tmdb_id) : null;
+    const candidateBySearch = candidateById
+        ? candidateById
+        : await searchTmdbMovie(movie.title, movie.release_year);
+
+    if (!candidateById && !candidateBySearch) {
         return movie;
     }
 
-    const lookup = await searchTmdbMovie(movie.title);
-    if (!lookup) return movie;
+    const meta = candidateById ?? candidateBySearch;
+    const releaseYearFromMeta = meta?.release_date ? Number.parseInt(meta.release_date.slice(0, 4), 10) : undefined;
 
     return {
         ...movie,
-        tmdb_id: movie.tmdb_id ?? lookup.tmdb_id,
-        poster_path: movie.poster_path ?? lookup.poster_path,
-        release_year: movie.release_year ?? lookup.release_year,
+        tmdb_id: meta?.id ?? movie.tmdb_id,
+        poster_path: movie.poster_path ?? meta?.poster_path ?? undefined,
+        release_year: movie.release_year ?? (Number.isFinite(releaseYearFromMeta) ? releaseYearFromMeta : undefined),
     };
 }
 

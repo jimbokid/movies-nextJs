@@ -133,8 +133,14 @@ Use null when you do not know a tmdb_id or poster_path. Do not include any other
 
         return NextResponse.json(payload, { status: 200 });
     } catch (error) {
+        const status = (error as { status?: number })?.status;
+        const message =
+            status === 429
+                ? 'AI quota reached. Please check your OpenAI plan or try again later.'
+                : 'Unexpected error generating recommendations.';
+
         console.error('AI recommend route failed', error);
-        return NextResponse.json({ message: 'Unexpected error generating recommendations.' }, { status: 500 });
+        return NextResponse.json({ message }, { status: status && status >= 400 && status < 600 ? status : 500 });
     }
 }
 

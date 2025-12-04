@@ -1,19 +1,10 @@
 import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
 import {
     AiRecommendResponse,
     AiRecommendedMovie,
     SelectedBadge,
 } from '@/types/discoverAi';
-
-interface OpenAIChoice {
-    message?: {
-        content?: string;
-    };
-}
-
-interface OpenAIResponse {
-    choices?: OpenAIChoice[];
-}
 
 interface RequestBody {
     selected?: SelectedBadge[];
@@ -21,6 +12,8 @@ interface RequestBody {
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 const TMDB_API_KEY = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY;
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
 function parseAiMovies(content: string): AiRecommendedMovie[] {
     try {
@@ -94,9 +87,11 @@ async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovi
 }
 
 export async function POST(req: Request) {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.OPENAI_API_KEY || !openai) {
         return NextResponse.json({ message: 'Missing OpenAI API key.' }, { status: 500 });
     }
+
+    const client = openai;
 
     const body = (await req.json().catch(() => null)) as RequestBody | null;
     const selected = body?.selected;
@@ -121,29 +116,16 @@ Return ONLY valid JSON in the following format:
 Use null when you do not know a tmdb_id or poster_path. Do not include any other commentary.`;
 
     try {
-        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-            },
-            body: JSON.stringify({
-                model: OPENAI_MODEL,
-                temperature: 0.8,
-                messages: [
-                    { role: 'system', content: 'You are a movie expert and recommender.' },
-                    { role: 'user', content: prompt },
-                ],
-            }),
+        const completion = await client.chat.completions.create({
+            model: OPENAI_MODEL,
+            temperature: 0.8,
+            messages: [
+                { role: 'system', content: 'You are a movie expert and recommender.' },
+                { role: 'user', content: prompt },
+            ],
         });
 
-        if (!aiResponse.ok) {
-            console.error('OpenAI error', await aiResponse.text());
-            return NextResponse.json({ message: 'Failed to generate recommendations.' }, { status: 500 });
-        }
-
-        const aiData: OpenAIResponse = await aiResponse.json();
-        const content = aiData.choices?.[0]?.message?.content ?? '[]';
+        const content = completion.choices?.[0]?.message?.content ?? '[]';
         const movies = parseAiMovies(content).slice(0, 5);
 
         const enriched = await Promise.all(movies.map(enrichMovie));

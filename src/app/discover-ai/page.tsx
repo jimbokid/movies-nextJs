@@ -21,7 +21,7 @@ const BADGE_MAX = 16;
 const AI_RECOMMEND_ENDPOINT = '/api/ai-recommend';
 
 const badgeButtonBase =
-    'px-4 py-2 rounded-full border transition-all text-sm md:text-base font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-950';
+    'px-5 md:px-8 py-2 rounded-3xl border transition-all text-sm md:text-base font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-950';
 
 const badgeContainerVariants: Variants = {
     hidden: {
@@ -192,7 +192,7 @@ export default function DiscoverAiPage() {
                     selectionSummary={selectionSummary}
                 />
 
-                <section className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.45)] p-6 md:p-8 space-y-6 overflow-hidden">
+                <section className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.45)] p-4 md:p-8 space-y-6 overflow-hidden">
                     {loading && <LoadingOverlay message={LOADING_MESSAGES[loadingMessageIndex]} />}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
@@ -211,7 +211,7 @@ export default function DiscoverAiPage() {
                         variants={badgeContainerVariants}
                         initial="hidden"
                         animate="show"
-                        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
+                        className="flex flex-wrap gap-3 md:gap-4"
                     >
                         {availableBadges.map(badge => {
                             const isSelected = selected.some(item => item.id === badge.id);

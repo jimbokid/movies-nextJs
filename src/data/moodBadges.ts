@@ -75,6 +75,29 @@ export const moodBadges: MoodBadge[] = [
     { id: 'chilling', label: 'Chilling', category: 'emotion' },
 ];
 
+export const BADGE_TITLE_COLORS: Record<string, string> = {
+    genre: 'text-blue-400',
+    vibe: 'text-purple-400',
+    aesthetic: 'text-pink-400',
+    theme: 'text-green-400',
+    emotion: 'text-amber-400',
+}
+
+export const BADGE_COLORS: Record<string, string> = {
+    genre: 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 border-blue-400/40 text-blue-100 hover:shadow-[0_0_20px_rgba(59,130,246,0.35)]',
+    vibe: 'bg-gradient-to-r from-purple-500/20 to-purple-600/20 border-purple-400/40 text-purple-100 hover:shadow-[0_0_20px_rgba(168,85,247,0.35)]',
+    aesthetic:
+        'bg-gradient-to-r from-pink-500/20 to-pink-600/20 border-pink-400/40 text-pink-100 hover:shadow-[0_0_20px_rgba(236,72,153,0.35)]',
+    theme: 'bg-gradient-to-r from-green-500/20 to-green-600/20 border-green-400/40 text-green-100 hover:shadow-[0_0_20px_rgba(34,197,94,0.35)]',
+    emotion:
+        'bg-gradient-to-r from-amber-500/20 to-amber-600/20 border-amber-400/40 text-amber-100 hover:shadow-[0_0_20px_rgba(251,191,36,0.35)]',
+};
+
+export const DEFAULT_BADGE_COLOR =
+    'bg-gradient-to-r from-purple-500/30 to-indigo-500/30 border-purple-300 text-purple-50 shadow-[0_10px_40px_rgba(168,85,247,0.25)]';
+
+export const DEFAULT_BADGE_TITLE_COLOR = 'text-gray-400';
+
 export function sampleBadges(count: number): MoodBadge[] {
     const shuffled = [...moodBadges].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, Math.min(count, moodBadges.length));

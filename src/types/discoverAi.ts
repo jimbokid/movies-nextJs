@@ -14,7 +14,7 @@ export interface SelectedBadge {
 export interface AiRecommendedMovie {
     title: string;
     tmdb_id?: number;
-    reason: string;
+    reason?: string;
     poster_path?: string;
     release_year?: number;
     overview?: string;

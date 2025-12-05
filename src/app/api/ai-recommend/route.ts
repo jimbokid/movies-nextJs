@@ -16,6 +16,8 @@ const TMDB_INCLUDE_ADULT = process.env.TMDB_INCLUDE_ADULT ?? 'false';
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
+const MOVIES_NUMBER_LIMIT = 7;
+
 function parseAiMovies(content: string): AiRecommendedMovie[] {
     try {
         const parsed = JSON.parse(content);
@@ -32,7 +34,8 @@ function parseAiMovies(content: string): AiRecommendedMovie[] {
                     return {
                         title: String(item.title ?? '').trim(),
                         reason: String(item.reason ?? '').trim(),
-                        poster_path: typeof item.poster_path === 'string' ? item.poster_path : undefined,
+                        poster_path:
+                            typeof item.poster_path === 'string' ? item.poster_path : undefined,
                         release_year: Number.isFinite(releaseYear) ? releaseYear : undefined,
                         overview: typeof item.overview === 'string' ? item.overview : undefined,
                         vote_average:
@@ -43,7 +46,7 @@ function parseAiMovies(content: string): AiRecommendedMovie[] {
                                   : undefined,
                     } satisfies AiRecommendedMovie;
                 })
-                .filter(item => item.title && item.reason);
+                .filter(item => item.title);
         }
     } catch (error) {
         console.error('Failed to parse AI response', error);
@@ -102,15 +105,20 @@ async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovi
         return movie;
     }
 
-    const releaseYearFromMeta = meta.release_date ? Number.parseInt(meta.release_date.slice(0, 4), 10) : undefined;
+    const releaseYearFromMeta = meta.release_date
+        ? Number.parseInt(meta.release_date.slice(0, 4), 10)
+        : undefined;
 
     return {
         ...movie,
         tmdb_id: meta.id,
         poster_path: meta.poster_path ?? undefined,
-        release_year: movie.release_year ?? (Number.isFinite(releaseYearFromMeta) ? releaseYearFromMeta : undefined),
+        release_year:
+            movie.release_year ??
+            (Number.isFinite(releaseYearFromMeta) ? releaseYearFromMeta : undefined),
         overview: meta.overview ?? movie.overview,
-        vote_average: typeof meta.vote_average === 'number' ? meta.vote_average : movie.vote_average,
+        vote_average:
+            typeof meta.vote_average === 'number' ? meta.vote_average : movie.vote_average,
     };
 }
 
@@ -132,16 +140,16 @@ export async function POST(req: Request) {
     }
 
     const moodLines = selected.map(badge => `- ${badge.label} (${badge.category})`).join('\n');
-    const prompt = `You are a movie expert and recommender. Based on the following moods and badges, suggest 5 movies.
+    const prompt = `You are a movie expert and recommender. Based on the following moods and badges, suggest ${MOVIES_NUMBER_LIMIT} movies.
 Moods:
 ${moodLines}
 
 Return ONLY valid JSON in the following format:
 [
-  {"title": "Movie title", "reason": "1-2 sentences on why it matches", "release_year": 1995},
-  ... 4 more
+  {"title": "Movie title", "release_year": 1995},
+  ... ${MOVIES_NUMBER_LIMIT - 1} more
 ]
-Do not guess TMDB ids. Do not include commentary or markdown. Provide the best known release year.`;
+Provide the best known release year.`;
 
     try {
         const completion = await client.chat.completions.create({
@@ -154,7 +162,7 @@ Do not guess TMDB ids. Do not include commentary or markdown. Provide the best k
         });
 
         const content = completion.choices?.[0]?.message?.content ?? '[]';
-        const movies = parseAiMovies(content).slice(0, 5);
+        const movies = parseAiMovies(content).slice(0, MOVIES_NUMBER_LIMIT);
 
         const enriched = await Promise.all(movies.map(enrichMovie));
         const payload: AiRecommendResponse = { movies: enriched };
@@ -168,7 +176,10 @@ Do not guess TMDB ids. Do not include commentary or markdown. Provide the best k
                 : 'Unexpected error generating recommendations.';
 
         console.error('AI recommend route failed', error);
-        return NextResponse.json({ message }, { status: status && status >= 400 && status < 600 ? status : 500 });
+        return NextResponse.json(
+            { message },
+            { status: status && status >= 400 && status < 600 ? status : 500 },
+        );
     }
 }
 

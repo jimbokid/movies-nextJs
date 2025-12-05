@@ -6,8 +6,7 @@ import {
     CURRENT_YEAR,
     INCLUDE_ADULT,
     LANGUAGE,
-    REGION,
-    START_DATE_POPULAR,
+    REGION
 } from '@/constants/appConstants';
 
 export const Dashboard = {
@@ -21,8 +20,7 @@ export const Dashboard = {
                     sort_by: 'popularity.desc',
                     include_adult: INCLUDE_ADULT,
                     page,
-                    primary_release_year: CURRENT_YEAR,
-                    primary_release_date: { lte: START_DATE_POPULAR },
+                    primary_release_year: CURRENT_YEAR
                 },
             })
             .then(res => res.data),

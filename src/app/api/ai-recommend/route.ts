@@ -1,10 +1,7 @@
+import axios from 'axios';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import {
-    AiRecommendResponse,
-    AiRecommendedMovie,
-    SelectedBadge,
-} from '@/types/discoverAi';
+import { AiRecommendResponse, AiRecommendedMovie, SelectedBadge } from '@/types/discoverAi';
 
 interface RequestBody {
     selected?: SelectedBadge[];
@@ -12,6 +9,10 @@ interface RequestBody {
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 const TMDB_API_KEY = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY;
+const TMDB_API_PATH = process.env.TMDB_API_PATH ?? 'https://api.themoviedb.org/3/';
+const TMDB_LANGUAGE = process.env.TMDB_LANGUAGE ?? 'en-US';
+const TMDB_REGION = process.env.TMDB_REGION ?? 'US';
+const TMDB_INCLUDE_ADULT = process.env.TMDB_INCLUDE_ADULT ?? 'false';
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
@@ -30,11 +31,16 @@ function parseAiMovies(content: string): AiRecommendedMovie[] {
 
                     return {
                         title: String(item.title ?? '').trim(),
-                        tmdb_id: typeof item.tmdb_id === 'number' ? item.tmdb_id : undefined,
                         reason: String(item.reason ?? '').trim(),
                         poster_path: typeof item.poster_path === 'string' ? item.poster_path : undefined,
                         release_year: Number.isFinite(releaseYear) ? releaseYear : undefined,
                         overview: typeof item.overview === 'string' ? item.overview : undefined,
+                        vote_average:
+                            typeof item.vote_average === 'number'
+                                ? item.vote_average
+                                : typeof item.vote_average === 'string'
+                                  ? Number.parseFloat(item.vote_average)
+                                  : undefined,
                     } satisfies AiRecommendedMovie;
                 })
                 .filter(item => item.title && item.reason);
@@ -57,29 +63,21 @@ interface TmdbMovieMeta {
 async function searchTmdbMovie(title: string, releaseYear?: number): Promise<TmdbMovieMeta | null> {
     if (!TMDB_API_KEY) return null;
 
-    const url = new URL('https://api.themoviedb.org/3/search/movie');
-    url.searchParams.set('api_key', TMDB_API_KEY);
-    url.searchParams.set('query', title);
-    url.searchParams.set('include_adult', 'false');
-    url.searchParams.set('language', 'en-US');
-    url.searchParams.set('page', '1');
-    if (releaseYear) {
-        url.searchParams.set('primary_release_year', String(releaseYear));
-    }
-
     try {
-        const response = await fetch(url.toString(), { next: { revalidate: 0 } });
-        if (!response.ok) return null;
-        const data = await response.json();
-        const results: TmdbMovieMeta[] = Array.isArray(data?.results)
-            ? data.results.map((item: TmdbMovieMeta) => ({
-                  id: item.id,
-                  title: item.title,
-                  poster_path: item.poster_path,
-                  release_date: item.release_date,
-                  overview: item.overview,
-                  vote_average: item.vote_average,
-              }))
+        const response = await axios.get(`${TMDB_API_PATH}search/movie`, {
+            params: {
+                api_key: TMDB_API_KEY,
+                language: TMDB_LANGUAGE,
+                region: TMDB_REGION,
+                include_adult: TMDB_INCLUDE_ADULT,
+                page: 1,
+                query: title,
+                year: releaseYear,
+            },
+        });
+
+        const results: TmdbMovieMeta[] = Array.isArray(response.data?.results)
+            ? response.data.results
             : [];
 
         if (results.length === 0) return null;
@@ -143,7 +141,7 @@ Return ONLY valid JSON in the following format:
   {"title": "Movie title", "reason": "1-2 sentences on why it matches", "release_year": 1995},
   ... 4 more
 ]
-Do not guess TMDB ids. Do not include commentary or markdown. Use null when you don't know a release year.`;
+Do not guess TMDB ids. Do not include commentary or markdown. Provide the best known release year.`;
 
     try {
         const completion = await client.chat.completions.create({

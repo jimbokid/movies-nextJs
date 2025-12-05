@@ -36,11 +36,6 @@ export default function Heading({ round, shuffleBadges, selectionSummary }: Head
                         <span className="h-2 w-2 rounded-full bg-purple-300 shadow-[0_0_0_4px_rgba(168,85,247,0.15)] transition-transform group-hover:scale-110" />
                         Shuffle moods
                     </button>
-                    {selectionSummary && (
-                        <span className="text-gray-400">
-                            Currently selected: {selectionSummary}
-                        </span>
-                    )}
                 </div>
             </div>
         </div>

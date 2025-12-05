@@ -195,6 +195,9 @@ export default function DiscoverAiPage() {
                                 const posterUrl = movie.poster_path
                                     ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
                                     : null;
+                                const rating = typeof movie.vote_average === 'number'
+                                    ? movie.vote_average.toFixed(1)
+                                    : null;
 
                                 return (
                                     <div
@@ -218,12 +221,24 @@ export default function DiscoverAiPage() {
                                         )}
                                         <div className="p-4 space-y-3 flex-1 flex flex-col">
                                             <div className="space-y-1">
-                                                <h3 className="text-xl font-semibold text-white">{movie.title}</h3>
-                                                {movie.release_year && (
-                                                    <p className="text-sm text-gray-400">{movie.release_year}</p>
-                                                )}
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <h3 className="text-xl font-semibold text-white">{movie.title}</h3>
+                                                        {movie.release_year && (
+                                                            <p className="text-sm text-gray-400">{movie.release_year}</p>
+                                                        )}
+                                                    </div>
+                                                    {rating && (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-3 py-1 text-xs font-semibold text-purple-100">
+                                                            ⭐ {rating}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <p className="text-gray-300 text-sm leading-relaxed flex-1">{movie.reason}</p>
+                                            {movie.overview && (
+                                                <p className="text-gray-400 text-sm leading-relaxed">{movie.overview}</p>
+                                            )}
+                                            <p className="text-gray-200 text-sm leading-relaxed flex-1">{movie.reason}</p>
                                             <div className="flex items-center justify-between pt-2">
                                                 <span className="text-xs uppercase tracking-[0.2em] text-purple-300">Tailored pick</span>
                                                 {movie.tmdb_id ? (

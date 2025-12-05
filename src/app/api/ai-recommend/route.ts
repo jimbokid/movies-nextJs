@@ -34,6 +34,7 @@ function parseAiMovies(content: string): AiRecommendedMovie[] {
                         reason: String(item.reason ?? '').trim(),
                         poster_path: typeof item.poster_path === 'string' ? item.poster_path : undefined,
                         release_year: Number.isFinite(releaseYear) ? releaseYear : undefined,
+                        overview: typeof item.overview === 'string' ? item.overview : undefined,
                     } satisfies AiRecommendedMovie;
                 })
                 .filter(item => item.title && item.reason);
@@ -46,8 +47,11 @@ function parseAiMovies(content: string): AiRecommendedMovie[] {
 
 interface TmdbMovieMeta {
     id: number;
+    title: string;
     poster_path?: string | null;
     release_date?: string | null;
+    overview?: string | null;
+    vote_average?: number | null;
 }
 
 async function searchTmdbMovie(title: string, releaseYear?: number): Promise<TmdbMovieMeta | null> {
@@ -67,38 +71,26 @@ async function searchTmdbMovie(title: string, releaseYear?: number): Promise<Tmd
         const response = await fetch(url.toString(), { next: { revalidate: 0 } });
         if (!response.ok) return null;
         const data = await response.json();
-        const match = data?.results?.[0];
-        if (!match) return null;
+        const results: TmdbMovieMeta[] = Array.isArray(data?.results)
+            ? data.results.map((item: TmdbMovieMeta) => ({
+                  id: item.id,
+                  title: item.title,
+                  poster_path: item.poster_path,
+                  release_date: item.release_date,
+                  overview: item.overview,
+                  vote_average: item.vote_average,
+              }))
+            : [];
 
-        return {
-            id: match.id,
-            poster_path: match.poster_path,
-            release_date: match.release_date,
-        };
+        if (results.length === 0) return null;
+
+        const exactYearMatch = releaseYear
+            ? results.find(movie => movie.release_date?.startsWith(String(releaseYear)))
+            : null;
+
+        return exactYearMatch ?? results[0];
     } catch (error) {
         console.error('TMDB lookup failed', error);
-        return null;
-    }
-}
-
-async function fetchTmdbDetails(tmdbId: number): Promise<TmdbMovieMeta | null> {
-    if (!TMDB_API_KEY) return null;
-
-    const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}`);
-    url.searchParams.set('api_key', TMDB_API_KEY);
-    url.searchParams.set('language', 'en-US');
-
-    try {
-        const response = await fetch(url.toString(), { next: { revalidate: 0 } });
-        if (!response.ok) return null;
-        const data = await response.json();
-        return {
-            id: data.id,
-            poster_path: data.poster_path,
-            release_date: data.release_date,
-        };
-    } catch (error) {
-        console.error('TMDB details lookup failed', error);
         return null;
     }
 }
@@ -106,23 +98,21 @@ async function fetchTmdbDetails(tmdbId: number): Promise<TmdbMovieMeta | null> {
 async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovie> {
     if (!TMDB_API_KEY) return movie;
 
-    const candidateById = movie.tmdb_id ? await fetchTmdbDetails(movie.tmdb_id) : null;
-    const candidateBySearch = candidateById
-        ? candidateById
-        : await searchTmdbMovie(movie.title, movie.release_year);
+    const meta = await searchTmdbMovie(movie.title, movie.release_year);
 
-    if (!candidateById && !candidateBySearch) {
+    if (!meta) {
         return movie;
     }
 
-    const meta = candidateById ?? candidateBySearch;
-    const releaseYearFromMeta = meta?.release_date ? Number.parseInt(meta.release_date.slice(0, 4), 10) : undefined;
+    const releaseYearFromMeta = meta.release_date ? Number.parseInt(meta.release_date.slice(0, 4), 10) : undefined;
 
     return {
         ...movie,
-        tmdb_id: meta?.id ?? movie.tmdb_id,
-        poster_path: movie.poster_path ?? meta?.poster_path ?? undefined,
+        tmdb_id: meta.id,
+        poster_path: meta.poster_path ?? undefined,
         release_year: movie.release_year ?? (Number.isFinite(releaseYearFromMeta) ? releaseYearFromMeta : undefined),
+        overview: meta.overview ?? movie.overview,
+        vote_average: typeof meta.vote_average === 'number' ? meta.vote_average : movie.vote_average,
     };
 }
 
@@ -150,10 +140,10 @@ ${moodLines}
 
 Return ONLY valid JSON in the following format:
 [
-  {"title": "Movie title", "tmdb_id": 123, "reason": "1-2 sentences on why it matches", "poster_path": "/path.jpg", "release_year": 1995},
+  {"title": "Movie title", "reason": "1-2 sentences on why it matches", "release_year": 1995},
   ... 4 more
 ]
-Use null when you do not know a tmdb_id or poster_path. Do not include any other commentary.`;
+Do not guess TMDB ids. Do not include commentary or markdown. Use null when you don't know a release year.`;
 
     try {
         const completion = await client.chat.completions.create({

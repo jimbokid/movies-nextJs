@@ -17,6 +17,8 @@ export interface AiRecommendedMovie {
     reason: string;
     poster_path?: string;
     release_year?: number;
+    overview?: string;
+    vote_average?: number;
 }
 
 export interface AiRecommendResponse {

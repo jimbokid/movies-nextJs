@@ -8,6 +8,7 @@ import { sampleBadges } from '@/data/moodBadges';
 
 const BADGE_MIN = 12;
 const BADGE_MAX = 16;
+const AI_RECOMMEND_ENDPOINT = '/api/ai-recommend';
 
 const badgeButtonBase =
     'px-4 py-2 rounded-full border transition-all text-sm md:text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-950';
@@ -60,7 +61,7 @@ export default function DiscoverAiPage() {
             setLoading(true);
             setError(null);
 
-            const response = await fetch('/api/ai-recommend', {
+            const response = await fetch(AI_RECOMMEND_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

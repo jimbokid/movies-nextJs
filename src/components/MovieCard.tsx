@@ -8,9 +8,10 @@ import { MovieItem } from '@/types/dashboard';
 interface MovieProps {
     movie: MovieItem;
     type?: string; // e.g. "detail" or "tv"
+    priority?: boolean;
 }
 
-const MovieCard: React.FC<MovieProps> = ({ movie, type = 'movie' }) => {
+const MovieCard: React.FC<MovieProps> = ({ movie, type = 'movie', priority = false }) => {
     const title = movie.title || movie.name || movie.original_name;
     const linkHref = `/detail/${type}/${movie.id}`;
 
@@ -24,6 +25,9 @@ const MovieCard: React.FC<MovieProps> = ({ movie, type = 'movie' }) => {
             <div className="relative w-full h-full">
                 {movie.poster_path ? (
                     <Image
+                        priority={priority}
+                        loading={priority ? 'eager' : 'lazy'}
+                        fetchPriority={priority ? 'high' : 'auto'}
                         src={`https://image.tmdb.org/t/p/w342${movie.poster_path}`}
                         alt={title}
                         fill

@@ -37,8 +37,12 @@ export default function DashboardPage() {
                     loader={false}
                 >
                     <div className="grid gap-6 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                        {data?.results.map(movie => (
-                            <MovieCard key={`${movie.id}-${movie.title}`} movie={movie} />
+                        {data?.results.map((movie,index) => (
+                            <MovieCard
+                                key={`${movie.id}-${movie.title}`}
+                                movie={movie}
+                                priority
+                            />
                         ))}
                     </div>
                 </InfiniteScroll>

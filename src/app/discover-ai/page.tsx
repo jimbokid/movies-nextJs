@@ -223,7 +223,7 @@ export default function DiscoverAiPage() {
                                         key={badge.id}
                                         type="button"
                                         onClick={() => handleToggleBadge(badge)}
-                                        className={`${badgeButtonBase} ${
+                                        className={`cursor-pointer ${badgeButtonBase} ${
                                             isSelected
                                                 ? categoryColor
                                                 : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
@@ -247,7 +247,7 @@ export default function DiscoverAiPage() {
                             type="button"
                             onClick={handleRecommend}
                             disabled={selected.length !== 3 || loading}
-                            className={`relative overflow-hidden px-7 py-3 rounded-2xl text-lg font-semibold transition-all shadow-[0_12px_40px_rgba(124,58,237,0.4)] focus:outline-none focus:ring-2 focus:ring-purple-400/50 w-full md:w-auto ${
+                            className={`cursor-pointer relative overflow-hidden px-7 py-3 rounded-2xl text-lg font-semibold transition-all shadow-[0_12px_40px_rgba(124,58,237,0.4)] focus:outline-none focus:ring-2 focus:ring-purple-400/50 w-full md:w-auto ${
                                 selected.length === 3
                                     ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:shadow-[0_20px_60px_rgba(124,58,237,0.45)]'
                                     : 'bg-gray-800 text-gray-500 cursor-not-allowed shadow-none'
@@ -264,20 +264,20 @@ export default function DiscoverAiPage() {
                                             ease: 'linear',
                                         }}
                                     />
-                                    <div className="flex flex-col leading-tight">
-                                        <span className="text-sm uppercase tracking-[0.18em] text-white/80">
-                                            Working
-                                        </span>
-                                    </div>
+                                    <div className="flex flex-col leading-tight">Working</div>
                                 </div>
                             ) : (
-                                'Get recommendations'
+                                <div className="flex items-center gap-3 text-white">
+                                    <div className="flex flex-col leading-tight">Get recommendations</div>
+
+                                </div>
                             )}
                         </button>
+
                         <button
                             type="button"
                             onClick={shuffleBadges}
-                            className="px-6 py-3 rounded-2xl border border-white/10 bg-white/5 text-gray-100 hover:border-purple-300/60 hover:bg-purple-500/10 transition"
+                            className="cursor-pointer px-6 py-3 rounded-2xl border border-white/10 bg-white/5 text-gray-100 hover:border-purple-300/60 hover:bg-purple-500/10 transition"
                         >
                             Try again
                         </button>

@@ -1,7 +1,7 @@
 import { MoodBadge } from '@/types/discoverAi';
 
 export const moodBadges: MoodBadge[] = [
-    // Genres
+    // Genres (unchanged, all relevant)
     { id: 'drama', label: 'Drama', category: 'genre' },
     { id: 'thriller', label: 'Thriller', category: 'genre' },
     { id: 'sci-fi', label: 'Sci-Fi', category: 'genre' },
@@ -17,7 +17,14 @@ export const moodBadges: MoodBadge[] = [
     { id: 'musical', label: 'Musical', category: 'genre' },
     { id: 'western', label: 'Western', category: 'genre' },
 
-    // Vibes
+    // 👉 Added relevant genres
+    { id: 'biopic', label: 'Biopic', category: 'genre' },
+    { id: 'war', label: 'War', category: 'genre' },
+    { id: 'family', label: 'Family', category: 'genre' },
+    { id: 'noir', label: 'Noir', category: 'genre' },
+    { id: 'post-apocalyptic', label: 'Post-apocalyptic', category: 'genre' },
+
+    // Vibes (all relevant, adding more “emotional style” ones)
     { id: 'cozy', label: 'Cozy', category: 'vibe' },
     { id: 'dark-moody', label: 'Dark & Moody', category: 'vibe' },
     { id: 'slow-burn', label: 'Slow-burn', category: 'vibe' },
@@ -31,7 +38,16 @@ export const moodBadges: MoodBadge[] = [
     { id: 'adrenaline', label: 'Adrenaline rush', category: 'vibe' },
     { id: 'contemplative', label: 'Contemplative', category: 'vibe' },
 
-    // Visual aesthetics
+    // 👉 Added relevant vibes
+    { id: 'feel-good-vibe', label: 'Feel-good', category: 'vibe' },
+    { id: 'cozy-rainy', label: 'Rainy day vibe', category: 'vibe' },
+    { id: 'emotional', label: 'Emotional', category: 'vibe' },
+    { id: 'mysterious', label: 'Mysterious atmosphere', category: 'vibe' },
+    { id: 'tense-atmosphere', label: 'Tense atmosphere', category: 'vibe' },
+    { id: 'romantic-warm', label: 'Warm & romantic', category: 'vibe' },
+    { id: 'bleak', label: 'Bleak', category: 'vibe' },
+
+    // Aesthetics (replacing overly technical terms with *vibes people understand*)
     { id: 'neon-noir', label: 'Neon-noir', category: 'aesthetic' },
     { id: 'retro-80s', label: 'Retro 80s', category: 'aesthetic' },
     { id: 'analog-film', label: 'Analog film look', category: 'aesthetic' },
@@ -46,7 +62,15 @@ export const moodBadges: MoodBadge[] = [
     { id: 'minimalist', label: 'Minimalist framing', category: 'aesthetic' },
     { id: 'dreamlike', label: 'Dreamlike haze', category: 'aesthetic' },
 
-    // Themes
+    // 👉 Simplified + more relevant aesthetics
+    { id: 'rainy-neon', label: 'Rainy neon streets', category: 'aesthetic' },
+    { id: 'foggy', label: 'Foggy & soft', category: 'aesthetic' },
+    { id: 'urban-night', label: 'Urban night lights', category: 'aesthetic' },
+    { id: 'vintage', label: 'Vintage look', category: 'aesthetic' },
+    { id: 'sun-drenched', label: 'Sun-drenched', category: 'aesthetic' },
+    { id: 'muted-colors', label: 'Muted colors', category: 'aesthetic' },
+
+    // Themes (story concepts — SUPER relevant)
     { id: 'coming-of-age', label: 'Coming-of-age', category: 'theme' },
     { id: 'revenge', label: 'Revenge', category: 'theme' },
     { id: 'heist', label: 'Heist', category: 'theme' },
@@ -61,7 +85,16 @@ export const moodBadges: MoodBadge[] = [
     { id: 'gothic', label: 'Gothic romance', category: 'theme' },
     { id: 'crime-saga', label: 'Crime saga', category: 'theme' },
 
-    // Emotions
+    // 👉 Added relevant themes
+    { id: 'friendship', label: 'Friendship', category: 'theme' },
+    { id: 'identity', label: 'Identity', category: 'theme' },
+    { id: 'grief', label: 'Grief', category: 'theme' },
+    { id: 'dystopia', label: 'Dystopia', category: 'theme' },
+    { id: 'class-struggle', label: 'Class struggle', category: 'theme' },
+    { id: 'romantic-drama', label: 'Romantic drama', category: 'theme' },
+    { id: 'family-bonds', label: 'Family bonds', category: 'theme' },
+
+    // Emotions (these are perfect — adding more useful ones)
     { id: 'hopeful', label: 'Hopeful', category: 'emotion' },
     { id: 'melancholic', label: 'Melancholic', category: 'emotion' },
     { id: 'tense', label: 'Tense', category: 'emotion' },
@@ -73,7 +106,18 @@ export const moodBadges: MoodBadge[] = [
     { id: 'cathartic', label: 'Cathartic', category: 'emotion' },
     { id: 'inspiring', label: 'Inspiring', category: 'emotion' },
     { id: 'chilling', label: 'Chilling', category: 'emotion' },
+
+    // 👉 Added emotional tags humans actually use
+    { id: 'romantic', label: 'Romantic', category: 'emotion' },
+    { id: 'sad', label: 'Sad', category: 'emotion' },
+    { id: 'heartwarming', label: 'Heartwarming', category: 'emotion' },
+    { id: 'funny', label: 'Funny', category: 'emotion' },
+    { id: 'weird', label: 'Weird', category: 'emotion' },
+    { id: 'tragic', label: 'Tragic', category: 'emotion' },
+    { id: 'thrilling', label: 'Thrilling', category: 'emotion' },
 ];
+
+
 
 export const BADGE_TITLE_COLORS: Record<string, string> = {
     genre: 'text-blue-400',

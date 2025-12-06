@@ -82,8 +82,8 @@ export default function SearchClient() {
     const showInitialSkeleton = isLoading && data.results.length === 0;
 
     return (
-        <main className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-7xl mx-auto px-4 py-10 space-y-8">
+        <main className="min-h-screen bg-gray-950 text-white pt-18">
+            <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
                 {/* Controls */}
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                     <h1 className="text-3xl font-bold tracking-tight">{title}</h1>

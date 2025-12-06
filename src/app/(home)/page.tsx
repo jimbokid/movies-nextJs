@@ -20,8 +20,13 @@ export default function DashboardPage() {
         );
 
     return (
-        <main className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-7xl mx-auto px-4 py-10">
+        <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-white pt-18 overflow-hidden">
+            <div className="h-screen pointer-events-none absolute inset-0">
+                <div className="absolute -left-10 -top-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
+                <div className="absolute right-0 top-1/4 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
+                <div className="absolute left-1/3 bottom-0 h-80 w-80 rounded-full bg-amber-500/10 blur-[90px]" />
+            </div>
+            <div className="max-w-6xl mx-auto px-4 py-10">
                 <h1 className="text-3xl font-bold mb-8 tracking-tight">Trending Movies 🎥</h1>
 
                 {/* Movies Grid */}

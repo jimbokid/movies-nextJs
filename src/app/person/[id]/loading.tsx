@@ -1,7 +1,7 @@
 export default function LoadingPersonPage() {
     return (
-        <div className="bg-gray-950 min-h-screen">
-            <div className="max-w-5xl mx-auto px-4 py-12 text-white animate-pulse">
+        <div className="bg-gray-950 min-h-screen pt-18">
+            <div className="max-w-6xl mx-auto px-4 py-12 text-white animate-pulse">
                 {/* Profile Section */}
                 <div className="flex flex-col items-center gap-6">
                     {/* Avatar */}

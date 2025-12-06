@@ -63,7 +63,7 @@ export default function RootLayout({
                 <SpeedInsights />
                 <ScrollToTop />
                 <Header />
-                <main className="min-h-screen ">
+                <main className="flex-1">
                     <ReactQueryProvider>{children}</ReactQueryProvider>
                 </main>
             </body>

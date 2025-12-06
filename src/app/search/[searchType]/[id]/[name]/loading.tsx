@@ -1,7 +1,7 @@
 export default function LoadingSearchPage({ title }: { title: string }) {
     return (
-        <main className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
+        <main className="min-h-screen bg-gray-950 text-white pt-18">
+            <div className="max-w-6xl mx-auto px-4 py-10 animate-pulse">
                 {/* Optional: show text placeholder where title will be */}
                 <h1 className="text-3xl font-bold mb-8 tracking-tight">{title}</h1>
 

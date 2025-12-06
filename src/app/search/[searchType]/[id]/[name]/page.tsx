@@ -51,7 +51,7 @@ export default function SearchPage({ params }: SearchPageProps) {
     if (data.results.length === 0)
         return (
             <main className="min-h-screen bg-gray-950 text-white">
-                <div className="max-w-7xl mx-auto px-4 py-10">
+                <div className="max-w-6xl mx-auto px-4 py-10">
                     <h1 className="text-3xl font-bold mb-8 tracking-tight">{title}</h1>
                     <div className="flex items-center justify-center min-h-[40vh] text-neutral-400">
                         No results found.
@@ -61,8 +61,8 @@ export default function SearchPage({ params }: SearchPageProps) {
         );
 
     return (
-        <main className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-7xl mx-auto px-4 py-10">
+        <main className="min-h-screen bg-gray-950 text-white pt-18">
+            <div className="max-w-6xl mx-auto px-4 py-10">
                 <h1 className="text-3xl font-bold mb-8 tracking-tight">{title}</h1>
 
                 {/* Movies Grid */}

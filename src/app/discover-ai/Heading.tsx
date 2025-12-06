@@ -3,19 +3,16 @@
 import React from 'react';
 
 interface HeadingProps {
-    round: number;
     shuffleBadges: () => void;
-    selectionSummary: string;
 }
 
-export default function Heading({ round, shuffleBadges, selectionSummary }: HeadingProps) {
+export default function Heading({ shuffleBadges }: HeadingProps) {
     return (
         <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-4">
                 <p className="text-xs uppercase tracking-[0.25em] text-purple-200/80 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                     Mini-game
                 </p>
-                <span className="text-xs text-gray-400">Round {round + 1}</span>
             </div>
             <div className="flex flex-col gap-3">
                 <h1 className="text-4xl md:text-5xl font-bold leading-tight">

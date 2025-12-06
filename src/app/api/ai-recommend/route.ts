@@ -162,7 +162,13 @@ Provide the best known release year.`;
         });
 
         const content = completion.choices?.[0]?.message?.content ?? '[]';
-        const movies = parseAiMovies(content).slice(0, MOVIES_NUMBER_LIMIT);
+
+        const clearContent = content
+            .replace(/```json/gi, '')
+            .replace(/```/g, '')
+            .trim();
+
+        const movies = parseAiMovies(clearContent).slice(0, MOVIES_NUMBER_LIMIT);
 
         const enriched = await Promise.all(movies.map(enrichMovie));
         const payload: AiRecommendResponse = { movies: enriched };

@@ -21,13 +21,16 @@ export default function SearchInput({
 
     return (
         <div className="w-full sm:w-[420px]">
-            <input
-                ref={inputRef}
-                className="w-full rounded-2xl bg-neutral-800 outline-none border border-neutral-700 focus:border-neutral-500 px-4 py-3 text-sm placeholder:text-neutral-400"
-                defaultValue={value ?? ''}
-                onChange={e => onChange(e.target.value)}
-                placeholder={placeholder}
-            />
+            <div className="relative group">
+                <input
+                    ref={inputRef}
+                    className="w-full rounded-2xl bg-white/5 border border-white/10 px-5 py-3 text-sm text-white placeholder:text-neutral-400 shadow-[0_10px_20px_rgba(0,0,0,0.55)] outline-none backdrop-blur-xl transition-colors transition-shadow focus:border-purple-400/70 focus:shadow-[0_0px_20px_rgba(129,140,248,0.55)]"
+                    defaultValue={value ?? ''}
+                    onChange={e => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    autoComplete="off"
+                />
+            </div>
         </div>
     );
 }

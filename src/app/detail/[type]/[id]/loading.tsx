@@ -1,6 +1,11 @@
 export default function LoadingDetailPage() {
     return (
-        <main className="min-h-screen bg-gray-950 text-gray-100 animate-pulse">
+        <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950  text-gray-100 animate-pulse">
+            <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -left-10 -top-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
+                <div className="absolute right-0 top-1/4 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
+                <div className="absolute left-1/3 bottom-0 h-80 w-80 rounded-full bg-amber-500/10 blur-[90px]" />
+            </div>
             {/* Header placeholder */}
             <section className="relative w-full h-[40vh] bg-gray-900 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-950/80 via-gray-950/30 to-transparent px-4 py-10 flex flex-col justify-end">

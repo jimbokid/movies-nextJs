@@ -115,6 +115,14 @@ export default function AboutPage() {
                         LinkedIn
                         <span className="text-lg leading-none">↗</span>
                     </Link>
+                    <Link
+                        href="https://buymeacoffee.com/jimbokid"
+                        target="_blank"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#FD0] px-6 py-3 text-sm sm:text-base font-semibold text-black shadow-[0_12px_40px_rgba(0,0,0,0.6)] transition  hover:-translate-y-0.5"
+                    >
+                        BuyMeACoffee
+                        <span className="text-lg leading-none">☕️</span>
+                    </Link>
                 </div>
 
                 {/* Footer */}

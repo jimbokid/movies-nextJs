@@ -4,14 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LOADING_MESSAGES } from '@/constants/appConstants';
 import { AiRecommendResponse, AiRecommendedMovie, MoodBadge } from '@/types/discoverAi';
 import {
-    BADGE_COLORS,
-    BADGE_TITLE_COLORS,
-    DEFAULT_BADGE_COLOR,
-    DEFAULT_BADGE_TITLE_COLOR,
     moodBadges,
     sampleBadges,
 } from '@/data/moodBadges';
-import { DiscoverMode } from '../app/discover-ai/ModeSwitch';
+import { DiscoverMode } from '@/app/discover-ai/ModeSwitch';
 
 const BADGE_MIN = 14;
 const BADGE_MAX = 20;
@@ -163,10 +159,6 @@ export function useDiscoverAi() {
     const loadingMessage = LOADING_MESSAGES[loadingMessageIndex];
 
     return {
-        BADGE_COLORS,
-        BADGE_TITLE_COLORS,
-        DEFAULT_BADGE_COLOR,
-        DEFAULT_BADGE_TITLE_COLOR,
         mode,
         setMode,
         randomBadges,

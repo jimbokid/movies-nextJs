@@ -33,7 +33,7 @@ export default function ModeSwitch({
     const idx = OPTIONS.findIndex(opt => opt.value === internal);
 
     return (
-        <div className="w-full sm:w-auto">
+        <div className="w-max sm:w-auto ">
             <div
                 className={`relative inline-flex w-full sm:w-auto rounded-2xl border border-white/10 bg-white/5 px-1 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl ${
                     disabled ? 'opacity-60 cursor-not-allowed' : ''

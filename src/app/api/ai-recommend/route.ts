@@ -282,8 +282,6 @@ export async function POST(req: Request) {
 
     const prompt = buildPrompt(curator, selected);
 
-    console.log(`curator`, curator);
-
     try {
         let aiResponse = await buildCuratedResponse(prompt, curator);
 

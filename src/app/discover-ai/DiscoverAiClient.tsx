@@ -134,7 +134,7 @@ export default function DiscoverAiClient() {
                                 })}
                             </div>
                         </div>
-                        <div className="flex flex-col items-end gap-3">
+                        <div className="w-max flex flex-col items-end gap-3 shrink-0">
                             <ModeSwitch value={mode} onChange={setMode} disabled={loading} />
                             <span className="text-sm text-gray-300 bg-white/5 border border-white/5 px-3 py-1 rounded-full">
                                 {selected.length} / {selectionLimit} selected

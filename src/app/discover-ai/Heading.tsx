@@ -22,8 +22,8 @@ export default function Heading({ shuffleBadges, shuffleDisabled = false }: Head
                     </span>
                 </h1>
                 <p className="text-lg text-gray-300 max-w-3xl">
-                    Pick exactly 3 vibes and I&apos;ll summon tonight&apos;s perfect watchlist.
-                    Shuffle anytime to start a fresh round.
+                    Pick your vibes and I&apos;ll summon tonight&apos;s perfect watchlist. Shuffle
+                    anytime to start a fresh round.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
                     <button

@@ -1,26 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, type Variants, stagger } from 'framer-motion';
-import { AiRecommendResponse, AiRecommendedMovie, MoodBadge } from '@/types/discoverAi';
-import {
-    BADGE_COLORS,
-    BADGE_TITLE_COLORS,
-    DEFAULT_BADGE_COLOR,
-    DEFAULT_BADGE_TITLE_COLOR,
-    moodBadges,
-    sampleBadges,
-} from '@/data/moodBadges';
-import { LOADING_MESSAGES } from '@/constants/appConstants';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
-import ModeSwitch, { DiscoverMode } from '@/app/discover-ai/ModeSwitch';
-
-const BADGE_MIN = 14;
-const BADGE_MAX = 20;
-const AI_RECOMMEND_ENDPOINT = '/api/ai-recommend';
+import ModeSwitch from '@/app/discover-ai/ModeSwitch';
+import useDiscoverAi from '@/app/discover-ai/useDiscoverAi';
 
 const badgeButtonBase =
     'px-5 md:px-8 py-2 rounded-3xl border transition-all text-sm md:text-base font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-950';
@@ -68,142 +54,30 @@ const cardVariants: Variants = {
 };
 
 export default function DiscoverAiPage() {
-    const [availableBadges, setAvailableBadges] = useState<MoodBadge[]>([]);
-    const [selected, setSelected] = useState<MoodBadge[]>([]);
-    const [recommendations, setRecommendations] = useState<AiRecommendedMovie[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-    const [error, setError] = useState<string | null>(null);
-    const [hint, setHint] = useState<string | null>(null);
-    const [round, setRound] = useState(0);
-    const resultsRef = useRef<HTMLDivElement | null>(null);
-    const [didSearch, setDidSearch] = useState(false);
-    const [mode, setMode] = useState<DiscoverMode>('random');
-
-    useEffect(() => {
-        if (!loading) {
-            setLoadingMessageIndex(0);
-            return;
-        }
-
-        const intervalId = setInterval(() => {
-            setLoadingMessageIndex(prev => (prev + 1) % LOADING_MESSAGES.length);
-        }, 2000);
-
-        return () => clearInterval(intervalId);
-    }, [loading]);
-
-    const randomCount = useCallback(
-        () => Math.floor(Math.random() * (BADGE_MAX - BADGE_MIN + 1)) + BADGE_MIN,
-        [],
-    );
-
-    const shuffleBadges = useCallback(() => {
-        const count = randomCount();
-        setAvailableBadges(sampleBadges(count));
-        setSelected([]);
-        setRecommendations([]);
-        setError(null);
-        setHint(null);
-        setDidSearch(false);
-        setRound(prev => prev + 1);
-    }, [randomCount]);
-
-    useEffect(() => {
-        shuffleBadges();
-    }, [shuffleBadges]);
-
-    const groupedBadges = useMemo(() => {
-        const groups = new Map<string, MoodBadge[]>();
-        moodBadges.forEach(badge => {
-            if (!groups.has(badge.category)) {
-                groups.set(badge.category, []);
-            }
-            groups.get(badge.category)?.push(badge);
-        });
-
-        return Array.from(groups.entries());
-    }, []);
-
-    const randomBadges = useMemo(() => {
-        const withSelections = [...availableBadges];
-
-        selected.forEach(sel => {
-            if (!withSelections.some(item => item.id === sel.id)) {
-                withSelections.unshift(sel);
-            }
-        });
-
-        return withSelections;
-    }, [availableBadges, selected]);
-
-    useEffect(() => {
-        if (recommendations.length > 0 && !loading) {
-            setTimeout(() => {
-                resultsRef.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                });
-            }, 200);
-        }
-    }, [recommendations, loading]);
-
-    const selectionLimit = mode === 'all' ? 10 : 3;
-    const canRecommend = mode === 'all' ? selected.length > 0 : selected.length === 3;
-
-    const handleToggleBadge = (badge: MoodBadge) => {
-        const isSelected = selected.some(item => item.id === badge.id);
-
-        if (isSelected) {
-            setSelected(prev => prev.filter(item => item.id !== badge.id));
-            setHint(null);
-            return;
-        }
-
-        if (selected.length >= selectionLimit) {
-            setHint(`You can only pick ${selectionLimit} moods for this mode.`);
-            return;
-        }
-
-        setSelected(prev => [...prev, badge]);
-        setHint(null);
-    };
-
-    const handleRecommend = async () => {
-        if (!canRecommend) return;
-
-        setDidSearch(true);
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            const response = await fetch(AI_RECOMMEND_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    selected: selected.map(item => ({
-                        label: item.label,
-                        category: item.category,
-                    })),
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.message ?? 'Unable to fetch recommendations.');
-            }
-
-            const data: AiRecommendResponse = await response.json();
-            setRecommendations(data.movies ?? []);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Something went wrong.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        BADGE_COLORS,
+        BADGE_TITLE_COLORS,
+        DEFAULT_BADGE_COLOR,
+        DEFAULT_BADGE_TITLE_COLOR,
+        mode,
+        setMode,
+        randomBadges,
+        groupedBadges,
+        selected,
+        selectionLimit,
+        canRecommend,
+        handleToggleBadge,
+        handleRecommend,
+        shuffleBadges,
+        round,
+        recommendations,
+        loading,
+        loadingMessage,
+        hint,
+        error,
+        didSearch,
+        resultsRef,
+    } = useDiscoverAi();
 
     return (
         <>
@@ -218,9 +92,7 @@ export default function DiscoverAiPage() {
                     <Heading shuffleBadges={shuffleBadges} shuffleDisabled={mode === 'all'} />
 
                     <section className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.45)] p-4 md:p-8 space-y-6 overflow-hidden">
-                        {loading && (
-                            <LoadingOverlay message={LOADING_MESSAGES[loadingMessageIndex]} />
-                        )}
+                        {loading && <LoadingOverlay message={loadingMessage} />}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
                                 <p className="text-sm text-purple-200/80">
@@ -422,7 +294,9 @@ export default function DiscoverAiPage() {
 
                         {!didSearch && !error && recommendations.length === 0 && !loading && (
                             <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-6 text-gray-300 backdrop-blur-xl">
-                                Pick 3 moods to get started. I’ll find the best cinematic match.
+                                {mode === 'all'
+                                    ? 'Pick at least 1 mood to get started. I’ll find the best cinematic match.'
+                                    : 'Pick 3 moods to get started. I’ll find the best cinematic match.'}
                             </div>
                         )}
 

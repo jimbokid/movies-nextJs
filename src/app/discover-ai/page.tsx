@@ -1,24 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, type Variants, stagger } from 'framer-motion';
-import { AiRecommendResponse, AiRecommendedMovie, MoodBadge } from '@/types/discoverAi';
-import {
-    BADGE_COLORS,
-    BADGE_TITLE_COLORS,
-    DEFAULT_BADGE_COLOR,
-    DEFAULT_BADGE_TITLE_COLOR,
-    sampleBadges,
-} from '@/data/moodBadges';
-import { LOADING_MESSAGES } from '@/constants/appConstants';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
-
-const BADGE_MIN = 14;
-const BADGE_MAX = 20;
-const AI_RECOMMEND_ENDPOINT = '/api/ai-recommend';
+import ModeSwitch from '@/app/discover-ai/ModeSwitch';
+import useDiscoverAi from '@/app/discover-ai/useDiscoverAi';
 
 const badgeButtonBase =
     'px-5 md:px-8 py-2 rounded-3xl border transition-all text-sm md:text-base font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-950';
@@ -66,114 +54,30 @@ const cardVariants: Variants = {
 };
 
 export default function DiscoverAiPage() {
-    const [availableBadges, setAvailableBadges] = useState<MoodBadge[]>([]);
-    const [selected, setSelected] = useState<MoodBadge[]>([]);
-    const [recommendations, setRecommendations] = useState<AiRecommendedMovie[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-    const [error, setError] = useState<string | null>(null);
-    const [hint, setHint] = useState<string | null>(null);
-    const [round, setRound] = useState(0);
-    const resultsRef = useRef<HTMLDivElement | null>(null);
-    const [didSearch, setDidSearch] = useState(false);
-
-    useEffect(() => {
-        if (!loading) {
-            setLoadingMessageIndex(0);
-            return;
-        }
-
-        const intervalId = setInterval(() => {
-            setLoadingMessageIndex(prev => (prev + 1) % LOADING_MESSAGES.length);
-        }, 2000);
-
-        return () => clearInterval(intervalId);
-    }, [loading]);
-
-    const randomCount = useCallback(
-        () => Math.floor(Math.random() * (BADGE_MAX - BADGE_MIN + 1)) + BADGE_MIN,
-        [],
-    );
-
-    const shuffleBadges = useCallback(() => {
-        const count = randomCount();
-        setAvailableBadges(sampleBadges(count));
-        setSelected([]);
-        setRecommendations([]);
-        setError(null);
-        setHint(null);
-        setDidSearch(false);
-        setRound(prev => prev + 1);
-    }, [randomCount]);
-
-    useEffect(() => {
-        shuffleBadges();
-    }, [shuffleBadges]);
-
-    useEffect(() => {
-        if (recommendations.length > 0 && !loading) {
-            setTimeout(() => {
-                resultsRef.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                });
-            }, 200);
-        }
-    }, [recommendations, loading]);
-
-    const handleToggleBadge = (badge: MoodBadge) => {
-        const isSelected = selected.some(item => item.id === badge.id);
-
-        if (isSelected) {
-            setSelected(prev => prev.filter(item => item.id !== badge.id));
-            setHint(null);
-            return;
-        }
-
-        if (selected.length >= 3) {
-            setHint('You can only pick 3 moods for this round.');
-            return;
-        }
-
-        setSelected(prev => [...prev, badge]);
-        setHint(null);
-    };
-
-    const handleRecommend = async () => {
-        if (selected.length !== 3) return;
-
-        setDidSearch(true);
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            const response = await fetch(AI_RECOMMEND_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    selected: selected.map(item => ({
-                        label: item.label,
-                        category: item.category,
-                    })),
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.message ?? 'Unable to fetch recommendations.');
-            }
-
-            const data: AiRecommendResponse = await response.json();
-            setRecommendations(data.movies ?? []);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Something went wrong.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        BADGE_COLORS,
+        BADGE_TITLE_COLORS,
+        DEFAULT_BADGE_COLOR,
+        DEFAULT_BADGE_TITLE_COLOR,
+        mode,
+        setMode,
+        randomBadges,
+        groupedBadges,
+        selected,
+        selectionLimit,
+        canRecommend,
+        handleToggleBadge,
+        handleRecommend,
+        shuffleBadges,
+        round,
+        recommendations,
+        loading,
+        loadingMessage,
+        hint,
+        error,
+        didSearch,
+        resultsRef,
+    } = useDiscoverAi();
 
     return (
         <>
@@ -185,60 +89,119 @@ export default function DiscoverAiPage() {
                 </div>
 
                 <div className="relative max-w-6xl mx-auto px-4 py-12 space-y-10">
-                    <Heading shuffleBadges={shuffleBadges} />
+                    <Heading shuffleBadges={shuffleBadges} shuffleDisabled={mode === 'all'} />
 
                     <section className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.45)] p-4 md:p-8 space-y-6 overflow-hidden">
-                        {loading && (
-                            <LoadingOverlay message={LOADING_MESSAGES[loadingMessageIndex]} />
-                        )}
+                        {loading && <LoadingOverlay message={loadingMessage} />}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
-                                <p className="text-sm text-purple-200/80">Pick exactly 3 moods</p>
+                                <p className="text-sm text-purple-200/80">
+                                    Pick up to {selectionLimit} moods ({
+                                        mode === 'all'
+                                            ? 'choose at least one to get recommendations'
+                                            : 'pick three to get recommendations'
+                                    })
+                                </p>
                                 <h2 className="text-2xl font-semibold text-white">
                                     What are you in the mood for?
                                 </h2>
                             </div>
-                            <span className="text-sm text-gray-300 bg-white/5 border border-white/5 px-3 py-1 rounded-full">
-                                {selected.length} / 3 selected
-                            </span>
+                            <div className="flex flex-wrap items-center justify-end gap-3">
+                                <ModeSwitch value={mode} onChange={setMode} />
+                                <span className="text-sm text-gray-300 bg-white/5 border border-white/5 px-3 py-1 rounded-full">
+                                    {selected.length} / {selectionLimit} selected
+                                </span>
+                            </div>
                         </div>
 
-                        <motion.div
-                            key={round}
-                            variants={badgeContainerVariants}
-                            initial="hidden"
-                            animate="show"
-                            className="flex flex-wrap gap-3 md:gap-4"
-                        >
-                            {availableBadges.map(badge => {
-                                const isSelected = selected.some(item => item.id === badge.id);
-                                const categoryColor =
-                                    BADGE_COLORS[badge.category] ?? DEFAULT_BADGE_COLOR;
-                                const categoryTitleColor =
-                                    BADGE_TITLE_COLORS[badge.category] ?? DEFAULT_BADGE_TITLE_COLOR;
+                        {mode === 'random' ? (
+                            <motion.div
+                                key={`${mode}-${round}`}
+                                variants={badgeContainerVariants}
+                                initial="hidden"
+                                animate="show"
+                                className="flex flex-wrap gap-3 md:gap-4"
+                            >
+                                {randomBadges.map(badge => {
+                                    const isSelected = selected.some(item => item.id === badge.id);
+                                    const categoryColor =
+                                        BADGE_COLORS[badge.category] ?? DEFAULT_BADGE_COLOR;
+                                    const categoryTitleColor =
+                                        BADGE_TITLE_COLORS[badge.category] ?? DEFAULT_BADGE_TITLE_COLOR;
 
-                                return (
-                                    <motion.button
-                                        variants={badgeItemVariants}
-                                        key={badge.id}
-                                        type="button"
-                                        onClick={() => handleToggleBadge(badge)}
-                                        className={`cursor-pointer ${badgeButtonBase} ${
-                                            isSelected
-                                                ? categoryColor
-                                                : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
-                                        }`}
-                                    >
-                                        <span
-                                            className={`block text-[11px] uppercase tracking-[0.18em] ${categoryTitleColor}`}
+                                    return (
+                                        <motion.button
+                                            variants={badgeItemVariants}
+                                            key={badge.id}
+                                            type="button"
+                                            onClick={() => handleToggleBadge(badge)}
+                                            className={`cursor-pointer ${badgeButtonBase} ${
+                                                isSelected
+                                                    ? categoryColor
+                                                    : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
+                                            }`}
                                         >
-                                            {badge.category}
-                                        </span>
-                                        <span className="text-base">{badge.label}</span>
-                                    </motion.button>
-                                );
-                            })}
-                        </motion.div>
+                                            <span
+                                                className={`block text-[11px] uppercase tracking-[0.18em] ${categoryTitleColor}`}
+                                            >
+                                                {badge.category}
+                                            </span>
+                                            <span className="text-base">{badge.label}</span>
+                                        </motion.button>
+                                    );
+                                })}
+                            </motion.div>
+                        ) : (
+                            <div className="space-y-6">
+                                {groupedBadges.map(([category, badges]) => {
+                                    const categoryTitleColor =
+                                        BADGE_TITLE_COLORS[category] ?? DEFAULT_BADGE_TITLE_COLOR;
+
+                                    return (
+                                        <motion.div
+                                            key={category}
+                                            variants={badgeContainerVariants}
+                                            className="space-y-3"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={`text-xs tracking-[0.18em] uppercase text-gray-300 ${categoryTitleColor}`}
+                                                >
+                                                    {category.toUpperCase()}
+                                                </span>
+                                                <span className="h-px w-10 bg-white/10" />
+                                            </div>
+                                            <div className="flex flex-wrap gap-3 md:gap-4">
+                                                {badges.map(badge => {
+                                                    const isSelected = selected.some(
+                                                        item => item.id === badge.id,
+                                                    );
+                                                    const categoryColor =
+                                                        BADGE_COLORS[badge.category] ??
+                                                        DEFAULT_BADGE_COLOR;
+
+                                                    return (
+                                                        <motion.button
+                                                            variants={badgeItemVariants}
+                                                            key={badge.id}
+                                                            type="button"
+                                                            onClick={() => handleToggleBadge(badge)}
+                                                            className={`cursor-pointer ${badgeButtonBase} ${
+                                                                isSelected
+                                                                    ? categoryColor
+                                                                    : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
+                                                            }`}
+                                                        >
+                                                            <span className="text-base">{badge.label}</span>
+                                                        </motion.button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        )}
                         {hint && <p className="text-sm text-amber-300">{hint}</p>}
                     </section>
 
@@ -246,9 +209,9 @@ export default function DiscoverAiPage() {
                         <button
                             type="button"
                             onClick={handleRecommend}
-                            disabled={selected.length !== 3 || loading}
+                            disabled={!canRecommend || loading}
                             className={`cursor-pointer relative overflow-hidden px-7 py-3 rounded-2xl text-lg font-semibold transition-all shadow-[0_12px_40px_rgba(124,58,237,0.4)] focus:outline-none focus:ring-2 focus:ring-purple-400/50 w-full md:w-auto ${
-                                selected.length === 3
+                                canRecommend
                                     ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:shadow-[0_20px_60px_rgba(124,58,237,0.45)]'
                                     : 'bg-gray-800 text-gray-500 cursor-not-allowed shadow-none'
                             }`}
@@ -277,7 +240,12 @@ export default function DiscoverAiPage() {
                         <button
                             type="button"
                             onClick={shuffleBadges}
-                            className="cursor-pointer px-6 py-3 rounded-2xl border border-white/10 bg-white/5 text-gray-100 hover:border-purple-300/60 hover:bg-purple-500/10 transition"
+                            disabled={mode === 'all'}
+                            className={`cursor-pointer px-6 py-3 rounded-2xl border border-white/10 bg-white/5 text-gray-100 transition ${
+                                mode === 'all'
+                                    ? 'opacity-60 cursor-not-allowed'
+                                    : 'hover:border-purple-300/60 hover:bg-purple-500/10'
+                            }`}
                         >
                             Try again
                         </button>
@@ -299,7 +267,12 @@ export default function DiscoverAiPage() {
                                     <button
                                         type="button"
                                         onClick={shuffleBadges}
-                                        className="text-sm underline underline-offset-4 hover:text-white"
+                                        disabled={mode === 'all'}
+                                        className={`text-sm underline underline-offset-4 ${
+                                            mode === 'all'
+                                                ? 'text-gray-500 cursor-not-allowed'
+                                                : 'hover:text-white'
+                                        }`}
                                     >
                                         Try again
                                     </button>
@@ -319,7 +292,9 @@ export default function DiscoverAiPage() {
 
                         {!didSearch && !error && recommendations.length === 0 && !loading && (
                             <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-6 text-gray-300 backdrop-blur-xl">
-                                Pick 3 moods to get started. I’ll find the best cinematic match.
+                                {mode === 'all'
+                                    ? 'Pick at least 1 mood to get started. I’ll find the best cinematic match.'
+                                    : 'Pick 3 moods to get started. I’ll find the best cinematic match.'}
                             </div>
                         )}
 

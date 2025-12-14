@@ -16,7 +16,7 @@ const TMDB_INCLUDE_ADULT = process.env.TMDB_INCLUDE_ADULT ?? 'false';
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
-const MOVIES_NUMBER_LIMIT = 6;
+const MOVIES_NUMBER_LIMIT = 12;
 
 function parseAiMovies(content: string): AiRecommendedMovie[] {
     try {
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
     const body = (await req.json().catch(() => null)) as RequestBody | null;
     const selected = body?.selected;
 
-    if (!selected || !Array.isArray(selected) || selected.length < 1 || selected.length > 3) {
+    if (!selected || !Array.isArray(selected) || selected.length < 1) {
         return NextResponse.json(
             { message: 'Please provide between 1 and 3 selected badges.' },
             { status: 400 },
@@ -160,10 +160,7 @@ Provide the best known release year.`;
             ],
         });
 
-        console.log(`completion`,completion.choices?.[0]?.message)
-
         const content = completion.choices?.[0]?.message?.content ?? '[]';
-
 
         const clearContent = content
             .replace(/```json/gi, '')

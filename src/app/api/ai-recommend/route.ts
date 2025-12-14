@@ -26,7 +26,7 @@ const TMDB_INCLUDE_ADULT = process.env.TMDB_INCLUDE_ADULT ?? 'false';
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
-const MOVIES_NUMBER_LIMIT = 6;
+const MOVIES_NUMBER_LIMIT = 7;
 const tmdbSearchCache = new Map<string, TmdbMovieMeta | null>();
 
 interface TmdbMovieMeta {
@@ -80,7 +80,10 @@ function emptyCuratorResponse(curator: CuratorPersona): AiCuratorResponse {
     };
 }
 
-function parseCuratorResponse(content: string, fallbackCurator: CuratorPersona): AiCuratorResponse | null {
+function parseCuratorResponse(
+    content: string,
+    fallbackCurator: CuratorPersona,
+): AiCuratorResponse | null {
     const parsed = safeExtractJsonObject(content);
 
     if (!parsed || typeof parsed !== 'object') {
@@ -101,7 +104,9 @@ function parseCuratorResponse(content: string, fallbackCurator: CuratorPersona):
     const data = parsed as Record<string, unknown>;
 
     if (Array.isArray(data.movies)) {
-        const movies = (data.movies as unknown[]).map(normalizeMovie).filter(Boolean) as AiRecommendedMovie[];
+        const movies = (data.movies as unknown[])
+            .map(normalizeMovie)
+            .filter(Boolean) as AiRecommendedMovie[];
         return {
             ...emptyCuratorResponse(fallbackCurator),
             primary: movies[0] ?? null,
@@ -109,28 +114,13 @@ function parseCuratorResponse(content: string, fallbackCurator: CuratorPersona):
         };
     }
 
-    const curatorField = data.curator;
-    const curator =
-        curatorField && typeof curatorField === 'object'
-            ? {
-                  id: (curatorField as Record<string, unknown>).id ?? fallbackCurator.id,
-                  name:
-                      typeof (curatorField as Record<string, unknown>).name === 'string'
-                          ? (curatorField as Record<string, unknown>).name
-                          : fallbackCurator.name,
-                  emoji:
-                      typeof (curatorField as Record<string, unknown>).emoji === 'string'
-                          ? (curatorField as Record<string, unknown>).emoji
-                          : fallbackCurator.emoji,
-              }
-            : { id: fallbackCurator.id, name: fallbackCurator.name, emoji: fallbackCurator.emoji };
-
+    const curator = fallbackCurator;
     const primary = normalizeMovie(data.primary);
     const alternatives = Array.isArray(data.alternatives)
-        ? (data.alternatives as unknown[])
+        ? ((data.alternatives as unknown[])
               .map(normalizeMovie)
               .filter(Boolean)
-              .slice(0, MOVIES_NUMBER_LIMIT - 1) as AiRecommendedMovie[]
+              .slice(0, MOVIES_NUMBER_LIMIT - 1) as AiRecommendedMovie[])
         : [];
 
     const curatorNote = typeof data.curator_note === 'string' ? data.curator_note.trim() : '';
@@ -237,9 +227,11 @@ async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovi
         tmdb_id: meta.id,
         poster_path: meta.poster_path ?? undefined,
         release_year:
-            movie.release_year ?? (Number.isFinite(releaseYearFromMeta) ? releaseYearFromMeta : undefined),
+            movie.release_year ??
+            (Number.isFinite(releaseYearFromMeta) ? releaseYearFromMeta : undefined),
         overview: meta.overview ?? movie.overview,
-        vote_average: typeof meta.vote_average === 'number' ? meta.vote_average : movie.vote_average,
+        vote_average:
+            typeof meta.vote_average === 'number' ? meta.vote_average : movie.vote_average,
     };
 }
 
@@ -255,7 +247,8 @@ async function buildCuratedResponse(
         messages: [
             {
                 role: 'system',
-                content: `You are ${curator.name} (${curator.emoji}) with a ${curator.tone} tone. ${curator.promptStyle}.` +
+                content:
+                    `You are ${curator.name} (${curator.emoji}) with a ${curator.tone} tone. ${curator.promptStyle}.` +
                     (strictInstruction ? ' Return ONLY JSON. No markdown or prose.' : ''),
             },
             { role: 'system', content: 'Respond concisely and avoid filler.' },
@@ -289,11 +282,17 @@ export async function POST(req: Request) {
 
     const prompt = buildPrompt(curator, selected);
 
+    console.log(`curator`, curator);
+
     try {
         let aiResponse = await buildCuratedResponse(prompt, curator);
 
         if (!aiResponse) {
-            aiResponse = await buildCuratedResponse(`${prompt}\nReturn ONLY JSON object.`, curator, true);
+            aiResponse = await buildCuratedResponse(
+                `${prompt}\nReturn ONLY JSON object.`,
+                curator,
+                true,
+            );
         }
 
         const baseResponse = aiResponse ?? emptyCuratorResponse(curator);

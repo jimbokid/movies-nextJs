@@ -39,7 +39,7 @@ export interface AiRecommendResponse {
 }
 
 export type AiCuratorResponse = {
-    curator: { id: CuratorId; name: string; emoji?: string };
+    curator: { id: CuratorId; name: string; emoji?: string | undefined };
     curator_note: string;
     primary: AiRecommendedMovie | null;
     alternatives: AiRecommendedMovie[];

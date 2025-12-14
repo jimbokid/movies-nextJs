@@ -341,7 +341,7 @@ export default function DiscoverAiClient() {
                                     animate="show"
                                     className="grid gap-6 lg:grid-cols-5 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_70px_rgba(0,0,0,0.55)] overflow-hidden"
                                 >
-                                    <div className="relative lg:col-span-2 h-72 w-full">
+                                    <div className="relative lg:col-span-2 h-72 w-full h-full">
                                         {primary.poster_path ? (
                                             primary.tmdb_id ? (
                                                 <Link href={`/detail/movie/${primary.tmdb_id}`} className="block h-full w-full">

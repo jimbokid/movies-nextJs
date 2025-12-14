@@ -8,6 +8,13 @@ import Heading from '@/app/discover-ai/Heading';
 import ModeSwitch from '@/app/discover-ai/ModeSwitch';
 import useDiscoverAi from '@/hooks/useDiscoverAi';
 
+import {
+    BADGE_COLORS,
+    BADGE_TITLE_COLORS,
+    DEFAULT_BADGE_COLOR,
+    DEFAULT_BADGE_TITLE_COLOR,
+} from '@/data/moodBadges';
+
 const badgeButtonBase =
     'px-5 md:px-8 py-2 rounded-3xl border transition-all text-sm md:text-base font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-950';
 
@@ -55,10 +62,6 @@ const cardVariants: Variants = {
 
 export default function DiscoverAiPage() {
     const {
-        BADGE_COLORS,
-        BADGE_TITLE_COLORS,
-        DEFAULT_BADGE_COLOR,
-        DEFAULT_BADGE_TITLE_COLOR,
         mode,
         setMode,
         randomBadges,

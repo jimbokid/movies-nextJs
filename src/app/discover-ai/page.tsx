@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, type Variants, stagger } from 'framer-motion';
@@ -10,11 +10,13 @@ import {
     BADGE_TITLE_COLORS,
     DEFAULT_BADGE_COLOR,
     DEFAULT_BADGE_TITLE_COLOR,
+    moodBadges,
     sampleBadges,
 } from '@/data/moodBadges';
 import { LOADING_MESSAGES } from '@/constants/appConstants';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
+import ModeSwitch, { DiscoverMode } from '@/app/discover-ai/ModeSwitch';
 
 const BADGE_MIN = 14;
 const BADGE_MAX = 20;
@@ -76,6 +78,7 @@ export default function DiscoverAiPage() {
     const [round, setRound] = useState(0);
     const resultsRef = useRef<HTMLDivElement | null>(null);
     const [didSearch, setDidSearch] = useState(false);
+    const [mode, setMode] = useState<DiscoverMode>('random');
 
     useEffect(() => {
         if (!loading) {
@@ -109,6 +112,30 @@ export default function DiscoverAiPage() {
     useEffect(() => {
         shuffleBadges();
     }, [shuffleBadges]);
+
+    const groupedBadges = useMemo(() => {
+        const groups = new Map<string, MoodBadge[]>();
+        moodBadges.forEach(badge => {
+            if (!groups.has(badge.category)) {
+                groups.set(badge.category, []);
+            }
+            groups.get(badge.category)?.push(badge);
+        });
+
+        return Array.from(groups.entries());
+    }, []);
+
+    const randomBadges = useMemo(() => {
+        const withSelections = [...availableBadges];
+
+        selected.forEach(sel => {
+            if (!withSelections.some(item => item.id === sel.id)) {
+                withSelections.unshift(sel);
+            }
+        });
+
+        return withSelections;
+    }, [availableBadges, selected]);
 
     useEffect(() => {
         if (recommendations.length > 0 && !loading) {
@@ -185,7 +212,7 @@ export default function DiscoverAiPage() {
                 </div>
 
                 <div className="relative max-w-6xl mx-auto px-4 py-12 space-y-10">
-                    <Heading shuffleBadges={shuffleBadges} />
+                    <Heading shuffleBadges={shuffleBadges} shuffleDisabled={mode === 'all'} />
 
                     <section className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.45)] p-4 md:p-8 space-y-6 overflow-hidden">
                         {loading && (
@@ -198,47 +225,112 @@ export default function DiscoverAiPage() {
                                     What are you in the mood for?
                                 </h2>
                             </div>
-                            <span className="text-sm text-gray-300 bg-white/5 border border-white/5 px-3 py-1 rounded-full">
-                                {selected.length} / 3 selected
-                            </span>
+                            <div className="flex flex-wrap items-center justify-end gap-3">
+                                <ModeSwitch value={mode} onChange={setMode} />
+                                <span className="text-sm text-gray-300 bg-white/5 border border-white/5 px-3 py-1 rounded-full">
+                                    {selected.length} / 3 selected
+                                </span>
+                            </div>
                         </div>
 
-                        <motion.div
-                            key={round}
-                            variants={badgeContainerVariants}
-                            initial="hidden"
-                            animate="show"
-                            className="flex flex-wrap gap-3 md:gap-4"
-                        >
-                            {availableBadges.map(badge => {
-                                const isSelected = selected.some(item => item.id === badge.id);
-                                const categoryColor =
-                                    BADGE_COLORS[badge.category] ?? DEFAULT_BADGE_COLOR;
-                                const categoryTitleColor =
-                                    BADGE_TITLE_COLORS[badge.category] ?? DEFAULT_BADGE_TITLE_COLOR;
+                        {mode === 'random' ? (
+                            <motion.div
+                                key={`${mode}-${round}`}
+                                variants={badgeContainerVariants}
+                                initial="hidden"
+                                animate="show"
+                                className="flex flex-wrap gap-3 md:gap-4"
+                            >
+                                {randomBadges.map(badge => {
+                                    const isSelected = selected.some(item => item.id === badge.id);
+                                    const categoryColor =
+                                        BADGE_COLORS[badge.category] ?? DEFAULT_BADGE_COLOR;
+                                    const categoryTitleColor =
+                                        BADGE_TITLE_COLORS[badge.category] ?? DEFAULT_BADGE_TITLE_COLOR;
 
-                                return (
-                                    <motion.button
-                                        variants={badgeItemVariants}
-                                        key={badge.id}
-                                        type="button"
-                                        onClick={() => handleToggleBadge(badge)}
-                                        className={`cursor-pointer ${badgeButtonBase} ${
-                                            isSelected
-                                                ? categoryColor
-                                                : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
-                                        }`}
-                                    >
-                                        <span
-                                            className={`block text-[11px] uppercase tracking-[0.18em] ${categoryTitleColor}`}
+                                    return (
+                                        <motion.button
+                                            variants={badgeItemVariants}
+                                            key={badge.id}
+                                            type="button"
+                                            onClick={() => handleToggleBadge(badge)}
+                                            className={`cursor-pointer ${badgeButtonBase} ${
+                                                isSelected
+                                                    ? categoryColor
+                                                    : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
+                                            }`}
                                         >
-                                            {badge.category}
-                                        </span>
-                                        <span className="text-base">{badge.label}</span>
-                                    </motion.button>
-                                );
-                            })}
-                        </motion.div>
+                                            <span
+                                                className={`block text-[11px] uppercase tracking-[0.18em] ${categoryTitleColor}`}
+                                            >
+                                                {badge.category}
+                                            </span>
+                                            <span className="text-base">{badge.label}</span>
+                                        </motion.button>
+                                    );
+                                })}
+                            </motion.div>
+                        ) : (
+                            <div className="space-y-6">
+                                {groupedBadges.map(([category, badges]) => {
+                                    const categoryTitleColor =
+                                        BADGE_TITLE_COLORS[category] ?? DEFAULT_BADGE_TITLE_COLOR;
+
+                                    return (
+                                        <motion.div
+                                            key={category}
+                                            variants={badgeContainerVariants}
+                                            initial="hidden"
+                                            animate="show"
+                                            className="space-y-3"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={`text-xs tracking-[0.18em] uppercase text-gray-300 ${categoryTitleColor}`}
+                                                >
+                                                    {category.toUpperCase()}
+                                                </span>
+                                                <span className="h-px w-10 bg-white/10" />
+                                            </div>
+                                            <div className="flex flex-wrap gap-3 md:gap-4">
+                                                {badges.map(badge => {
+                                                    const isSelected = selected.some(
+                                                        item => item.id === badge.id,
+                                                    );
+                                                    const categoryColor =
+                                                        BADGE_COLORS[badge.category] ??
+                                                        DEFAULT_BADGE_COLOR;
+                                                    const badgeCategoryTitleColor =
+                                                        BADGE_TITLE_COLORS[badge.category] ??
+                                                        DEFAULT_BADGE_TITLE_COLOR;
+
+                                                    return (
+                                                        <motion.button
+                                                            variants={badgeItemVariants}
+                                                            key={badge.id}
+                                                            type="button"
+                                                            onClick={() => handleToggleBadge(badge)}
+                                                            className={`cursor-pointer ${badgeButtonBase} ${
+                                                                isSelected
+                                                                    ? categoryColor
+                                                                    : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
+                                                            }`}
+                                                        >
+                                                            <span
+                                                                className={`block text-[11px] uppercase tracking-[0.18em] ${badgeCategoryTitleColor}`}
+                                                            >
+                                                                {badge.category}
+                                                            </span>
+                                                            <span className="text-base">{badge.label}</span>
+                                                        </motion.button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        )}
                         {hint && <p className="text-sm text-amber-300">{hint}</p>}
                     </section>
 
@@ -277,7 +369,12 @@ export default function DiscoverAiPage() {
                         <button
                             type="button"
                             onClick={shuffleBadges}
-                            className="cursor-pointer px-6 py-3 rounded-2xl border border-white/10 bg-white/5 text-gray-100 hover:border-purple-300/60 hover:bg-purple-500/10 transition"
+                            disabled={mode === 'all'}
+                            className={`cursor-pointer px-6 py-3 rounded-2xl border border-white/10 bg-white/5 text-gray-100 transition ${
+                                mode === 'all'
+                                    ? 'opacity-60 cursor-not-allowed'
+                                    : 'hover:border-purple-300/60 hover:bg-purple-500/10'
+                            }`}
                         >
                             Try again
                         </button>
@@ -299,7 +396,12 @@ export default function DiscoverAiPage() {
                                     <button
                                         type="button"
                                         onClick={shuffleBadges}
-                                        className="text-sm underline underline-offset-4 hover:text-white"
+                                        disabled={mode === 'all'}
+                                        className={`text-sm underline underline-offset-4 ${
+                                            mode === 'all'
+                                                ? 'text-gray-500 cursor-not-allowed'
+                                                : 'hover:text-white'
+                                        }`}
                                     >
                                         Try again
                                     </button>

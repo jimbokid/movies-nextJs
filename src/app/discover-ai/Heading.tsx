@@ -12,7 +12,7 @@ export default function Heading({ shuffleBadges, shuffleDisabled = false }: Head
         <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-4">
                 <p className="text-xs uppercase tracking-[0.25em] text-purple-200/80 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                    Mini-game
+                    AI Curator
                 </p>
             </div>
             <div className="flex flex-col gap-3">
@@ -22,8 +22,8 @@ export default function Heading({ shuffleBadges, shuffleDisabled = false }: Head
                     </span>
                 </h1>
                 <p className="text-lg text-gray-300 max-w-3xl">
-                    Pick your vibes and I&apos;ll summon tonight&apos;s perfect watchlist. Shuffle
-                    anytime to start a fresh round.
+                    Pick your vibes and let a curated persona craft tonight&apos;s perfect watchlist. Shuffle anytime for a fresh
+                    mood mix.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
                     <button

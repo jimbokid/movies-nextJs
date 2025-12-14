@@ -12,9 +12,11 @@ const OPTIONS: { label: string; value: DiscoverMode }[] = [
 export default function ModeSwitch({
     value,
     onChange,
+    disabled = false,
 }: {
     value: DiscoverMode;
     onChange: (mode: DiscoverMode) => void;
+    disabled?: boolean;
 }) {
     const [internal, setInternal] = useState<DiscoverMode>(value);
 
@@ -23,6 +25,7 @@ export default function ModeSwitch({
     }, [value]);
 
     const handle = (v: DiscoverMode) => {
+        if (disabled) return;
         setInternal(v);
         onChange(v);
     };
@@ -31,7 +34,11 @@ export default function ModeSwitch({
 
     return (
         <div className="w-full sm:w-auto">
-            <div className="relative inline-flex w-full sm:w-auto rounded-2xl border border-white/10 bg-white/5 px-1 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+            <div
+                className={`relative inline-flex w-full sm:w-auto rounded-2xl border border-white/10 bg-white/5 px-1 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl ${
+                    disabled ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
+            >
                 <div className="relative grid w-full grid-cols-2 text-xs sm:text-sm font-medium">
                     <div
                         aria-hidden
@@ -43,6 +50,7 @@ export default function ModeSwitch({
                             key={opt.value}
                             type="button"
                             onClick={() => handle(opt.value)}
+                            disabled={disabled}
                             aria-pressed={internal === opt.value}
                             className={[
                                 'relative z-10 px-4 py-2 rounded-xl transition-colors cursor-pointer text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950',

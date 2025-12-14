@@ -1,5 +1,18 @@
 export type BadgeCategory = 'genre' | 'vibe' | 'aesthetic' | 'theme' | 'emotion';
 
+export type CuratorId = 'festival' | 'sad_indie' | 'crowd_pleaser' | 'film_school';
+
+export type CuratorTone = 'warm' | 'poetic' | 'bold' | 'analytical';
+
+export type CuratorPersona = {
+    id: CuratorId;
+    name: string;
+    emoji: string;
+    tagline: string;
+    tone: CuratorTone;
+    promptStyle: string;
+};
+
 export interface MoodBadge {
     id: string;
     label: string;
@@ -24,3 +37,10 @@ export interface AiRecommendedMovie {
 export interface AiRecommendResponse {
     movies: AiRecommendedMovie[];
 }
+
+export type AiCuratorResponse = {
+    curator: { id: CuratorId; name: string; emoji?: string };
+    curator_note: string;
+    primary: AiRecommendedMovie | null;
+    alternatives: AiRecommendedMovie[];
+};

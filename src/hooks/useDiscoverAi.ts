@@ -2,21 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LOADING_MESSAGES } from '@/constants/appConstants';
-import { AiRecommendResponse, AiRecommendedMovie, MoodBadge } from '@/types/discoverAi';
-import {
-    moodBadges,
-    sampleBadges,
-} from '@/data/moodBadges';
+import { AiCuratorResponse, AiRecommendedMovie, CuratorId, MoodBadge } from '@/types/discoverAi';
+import { moodBadges, sampleBadges } from '@/data/moodBadges';
+import { CURATORS, DEFAULT_CURATOR_ID } from '@/data/curators';
+import { groupBadgesByCategory } from '@/utils/moodBadges';
 import { DiscoverMode } from '@/app/discover-ai/ModeSwitch';
 
 const BADGE_MIN = 14;
 const BADGE_MAX = 20;
 const AI_RECOMMEND_ENDPOINT = '/api/ai-recommend';
+const SELECTION_LIMIT = 3;
 
 export function useDiscoverAi() {
     const [availableBadges, setAvailableBadges] = useState<MoodBadge[]>([]);
     const [selected, setSelected] = useState<MoodBadge[]>([]);
     const [recommendations, setRecommendations] = useState<AiRecommendedMovie[]>([]);
+    const [curation, setCuration] = useState<AiCuratorResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
     const [error, setError] = useState<string | null>(null);
@@ -25,11 +26,19 @@ export function useDiscoverAi() {
     const resultsRef = useRef<HTMLDivElement | null>(null);
     const [didSearch, setDidSearch] = useState(false);
     const [mode, setMode] = useState<DiscoverMode>('random');
+    const [curatorId, setCuratorId] = useState<CuratorId>(DEFAULT_CURATOR_ID);
 
     useEffect(() => {
         setSelected([]);
         setHint(null);
     }, [mode]);
+
+    useEffect(() => {
+        setCuration(null);
+        setRecommendations([]);
+        setDidSearch(false);
+        setError(null);
+    }, [curatorId]);
 
     useEffect(() => {
         if (!loading) {
@@ -54,6 +63,7 @@ export function useDiscoverAi() {
         setAvailableBadges(sampleBadges(count));
         setSelected([]);
         setRecommendations([]);
+        setCuration(null);
         setError(null);
         setHint(null);
         setDidSearch(false);
@@ -64,17 +74,7 @@ export function useDiscoverAi() {
         shuffleBadges();
     }, [shuffleBadges]);
 
-    const groupedBadges = useMemo(() => {
-        const groups = new Map<string, MoodBadge[]>();
-        moodBadges.forEach(badge => {
-            if (!groups.has(badge.category)) {
-                groups.set(badge.category, []);
-            }
-            groups.get(badge.category)?.push(badge);
-        });
-
-        return Array.from(groups.entries());
-    }, []);
+    const groupedBadges = useMemo(() => groupBadgesByCategory(moodBadges), []);
 
     const randomBadges = useMemo(() => {
         const withSelections = [...availableBadges];
@@ -88,8 +88,13 @@ export function useDiscoverAi() {
         return withSelections;
     }, [availableBadges, selected]);
 
+    const hasResults = useMemo(
+        () => Boolean(curation?.primary || (curation?.alternatives?.length ?? 0) > 0),
+        [curation],
+    );
+
     useEffect(() => {
-        if (recommendations.length > 0 && !loading) {
+        if (hasResults && !loading) {
             setTimeout(() => {
                 resultsRef.current?.scrollIntoView({
                     behavior: 'smooth',
@@ -97,12 +102,14 @@ export function useDiscoverAi() {
                 });
             }, 200);
         }
-    }, [recommendations, loading]);
+    }, [hasResults, loading]);
 
-    const selectionLimit = mode === 'all' ? 10 : 3;
-    const canRecommend = mode === 'all' ? selected.length > 0 : selected.length === 3;
+    const selectionLimit = SELECTION_LIMIT;
+    const canRecommend = selected.length > 0 && selected.length <= selectionLimit;
 
     const handleToggleBadge = (badge: MoodBadge) => {
+        if (loading) return;
+
         const isSelected = selected.some(item => item.id === badge.id);
 
         if (isSelected) {
@@ -135,6 +142,7 @@ export function useDiscoverAi() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    curatorId,
                     selected: selected.map(item => ({
                         label: item.label,
                         category: item.category,
@@ -147,8 +155,20 @@ export function useDiscoverAi() {
                 throw new Error(errorData?.message ?? 'Unable to fetch recommendations.');
             }
 
-            const data: AiRecommendResponse = await response.json();
-            setRecommendations(data.movies ?? []);
+            const data: AiCuratorResponse = await response.json();
+            const normalized = {
+                ...data,
+                alternatives: data.alternatives ?? [],
+                curator: data.curator ?? {
+                    id: curatorId,
+                    name: CURATORS.find(cur => cur.id === curatorId)?.name ?? curatorId,
+                },
+            } satisfies AiCuratorResponse;
+
+            setCuration(normalized);
+            setRecommendations(
+                [normalized.primary, ...normalized.alternatives].filter(Boolean) as AiRecommendedMovie[],
+            );
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Something went wrong.');
         } finally {
@@ -161,6 +181,8 @@ export function useDiscoverAi() {
     return {
         mode,
         setMode,
+        curatorId,
+        setCuratorId,
         randomBadges,
         groupedBadges,
         selected,
@@ -171,6 +193,8 @@ export function useDiscoverAi() {
         shuffleBadges,
         round,
         recommendations,
+        curation,
+        hasResults,
         loading,
         loadingMessage,
         hint,

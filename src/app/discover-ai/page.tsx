@@ -148,6 +148,8 @@ export default function DiscoverAiPage() {
         }
     }, [recommendations, loading]);
 
+    const selectionLimit = mode === 'all' ? 10 : 3;
+
     const handleToggleBadge = (badge: MoodBadge) => {
         const isSelected = selected.some(item => item.id === badge.id);
 
@@ -157,8 +159,8 @@ export default function DiscoverAiPage() {
             return;
         }
 
-        if (selected.length >= 3) {
-            setHint('You can only pick 3 moods for this round.');
+        if (selected.length >= selectionLimit) {
+            setHint(`You can only pick ${selectionLimit} moods for this mode.`);
             return;
         }
 
@@ -220,7 +222,9 @@ export default function DiscoverAiPage() {
                         )}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
-                                <p className="text-sm text-purple-200/80">Pick exactly 3 moods</p>
+                                <p className="text-sm text-purple-200/80">
+                                    Pick up to {selectionLimit} moods (3 to get recommendations)
+                                </p>
                                 <h2 className="text-2xl font-semibold text-white">
                                     What are you in the mood for?
                                 </h2>
@@ -228,7 +232,7 @@ export default function DiscoverAiPage() {
                             <div className="flex flex-wrap items-center justify-end gap-3">
                                 <ModeSwitch value={mode} onChange={setMode} />
                                 <span className="text-sm text-gray-300 bg-white/5 border border-white/5 px-3 py-1 rounded-full">
-                                    {selected.length} / 3 selected
+                                    {selected.length} / {selectionLimit} selected
                                 </span>
                             </div>
                         </div>
@@ -300,9 +304,6 @@ export default function DiscoverAiPage() {
                                                     const categoryColor =
                                                         BADGE_COLORS[badge.category] ??
                                                         DEFAULT_BADGE_COLOR;
-                                                    const badgeCategoryTitleColor =
-                                                        BADGE_TITLE_COLORS[badge.category] ??
-                                                        DEFAULT_BADGE_TITLE_COLOR;
 
                                                     return (
                                                         <motion.button
@@ -316,11 +317,6 @@ export default function DiscoverAiPage() {
                                                                     : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
                                                             }`}
                                                         >
-                                                            <span
-                                                                className={`block text-[11px] uppercase tracking-[0.18em] ${badgeCategoryTitleColor}`}
-                                                            >
-                                                                {badge.category}
-                                                            </span>
                                                             <span className="text-base">{badge.label}</span>
                                                         </motion.button>
                                                     );

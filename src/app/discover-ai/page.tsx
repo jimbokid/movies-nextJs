@@ -161,8 +161,6 @@ export default function DiscoverAiPage() {
                                         <motion.div
                                             key={category}
                                             variants={badgeContainerVariants}
-                                            initial="hidden"
-                                            animate="show"
                                             className="space-y-3"
                                         >
                                             <div className="flex items-center gap-2">

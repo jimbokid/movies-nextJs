@@ -31,6 +31,11 @@ export function useDiscoverAi() {
     const [mode, setMode] = useState<DiscoverMode>('random');
 
     useEffect(() => {
+        setSelected([]);
+        setHint(null);
+    }, [mode]);
+
+    useEffect(() => {
         if (!loading) {
             setLoadingMessageIndex(0);
             return;

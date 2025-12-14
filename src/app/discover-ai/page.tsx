@@ -149,6 +149,7 @@ export default function DiscoverAiPage() {
     }, [recommendations, loading]);
 
     const selectionLimit = mode === 'all' ? 10 : 3;
+    const canRecommend = mode === 'all' ? selected.length > 0 : selected.length === 3;
 
     const handleToggleBadge = (badge: MoodBadge) => {
         const isSelected = selected.some(item => item.id === badge.id);
@@ -169,7 +170,7 @@ export default function DiscoverAiPage() {
     };
 
     const handleRecommend = async () => {
-        if (selected.length !== 3) return;
+        if (!canRecommend) return;
 
         setDidSearch(true);
 
@@ -223,7 +224,11 @@ export default function DiscoverAiPage() {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
                                 <p className="text-sm text-purple-200/80">
-                                    Pick up to {selectionLimit} moods (3 to get recommendations)
+                                    Pick up to {selectionLimit} moods ({
+                                        mode === 'all'
+                                            ? 'choose at least one to get recommendations'
+                                            : 'pick three to get recommendations'
+                                    })
                                 </p>
                                 <h2 className="text-2xl font-semibold text-white">
                                     What are you in the mood for?
@@ -334,9 +339,9 @@ export default function DiscoverAiPage() {
                         <button
                             type="button"
                             onClick={handleRecommend}
-                            disabled={selected.length !== 3 || loading}
+                            disabled={!canRecommend || loading}
                             className={`cursor-pointer relative overflow-hidden px-7 py-3 rounded-2xl text-lg font-semibold transition-all shadow-[0_12px_40px_rgba(124,58,237,0.4)] focus:outline-none focus:ring-2 focus:ring-purple-400/50 w-full md:w-auto ${
-                                selected.length === 3
+                                canRecommend
                                     ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:shadow-[0_20px_60px_rgba(124,58,237,0.45)]'
                                     : 'bg-gray-800 text-gray-500 cursor-not-allowed shadow-none'
                             }`}

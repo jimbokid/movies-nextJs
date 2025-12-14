@@ -7,7 +7,7 @@ interface RequestBody {
     selected?: SelectedBadge[];
 }
 
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-5.2';
 const TMDB_API_KEY = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY;
 const TMDB_API_PATH = process.env.TMDB_API_PATH ?? 'https://api.themoviedb.org/3/';
 const TMDB_LANGUAGE = process.env.TMDB_LANGUAGE ?? 'en-US';
@@ -16,7 +16,7 @@ const TMDB_INCLUDE_ADULT = process.env.TMDB_INCLUDE_ADULT ?? 'false';
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
-const MOVIES_NUMBER_LIMIT = 7;
+const MOVIES_NUMBER_LIMIT = 6;
 
 function parseAiMovies(content: string): AiRecommendedMovie[] {
     try {
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
 Moods:
 ${moodLines}
 
-Return ONLY valid JSON in the following format:
+Return ONLY valid JSON array of movies in the following format:
 [
   {"title": "Movie title", "release_year": 1995},
   ... ${MOVIES_NUMBER_LIMIT - 1} more
@@ -154,14 +154,16 @@ Provide the best known release year.`;
     try {
         const completion = await client.chat.completions.create({
             model: OPENAI_MODEL,
-            temperature: 0.8,
             messages: [
-                { role: 'system', content: 'You are a movie expert and recommender.' },
-                { role: 'user', content: prompt },
+                { role: "system", content: "Return ONLY JSON ARRAY. No markdown. No code fences." },
+                { role: "user", content: prompt },
             ],
         });
 
+        console.log(`completion`,completion.choices?.[0]?.message)
+
         const content = completion.choices?.[0]?.message?.content ?? '[]';
+
 
         const clearContent = content
             .replace(/```json/gi, '')

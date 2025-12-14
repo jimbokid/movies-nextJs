@@ -6,7 +6,7 @@ import { motion, AnimatePresence, type Variants, stagger } from 'framer-motion';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
 import ModeSwitch from '@/app/discover-ai/ModeSwitch';
-import useDiscoverAi from '@/app/discover-ai/useDiscoverAi';
+import useDiscoverAi from '@/hooks/useDiscoverAi';
 
 const badgeButtonBase =
     'px-5 md:px-8 py-2 rounded-3xl border transition-all text-sm md:text-base font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-950';
@@ -93,7 +93,7 @@ export default function DiscoverAiPage() {
 
                     <section className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.45)] p-4 md:p-8 space-y-6 overflow-hidden">
                         {loading && <LoadingOverlay message={loadingMessage} />}
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                             <div>
                                 <p className="text-sm text-purple-200/80">
                                     Pick up to {selectionLimit} moods ({
@@ -106,7 +106,7 @@ export default function DiscoverAiPage() {
                                     What are you in the mood for?
                                 </h2>
                             </div>
-                            <div className="flex flex-wrap items-center justify-end gap-3">
+                            <div className="flex flex-wrap flex-col items-end justify-end gap-3">
                                 <ModeSwitch value={mode} onChange={setMode} />
                                 <span className="text-sm text-gray-300 bg-white/5 border border-white/5 px-3 py-1 rounded-full">
                                     {selected.length} / {selectionLimit} selected

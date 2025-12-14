@@ -11,7 +11,7 @@ import {
     moodBadges,
     sampleBadges,
 } from '@/data/moodBadges';
-import { DiscoverMode } from './ModeSwitch';
+import { DiscoverMode } from '../app/discover-ai/ModeSwitch';
 
 const BADGE_MIN = 14;
 const BADGE_MAX = 20;

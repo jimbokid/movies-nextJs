@@ -19,6 +19,7 @@ export interface AiRecommendedMovie {
     release_year?: number;
     overview?: string;
     vote_average?: number;
+    genre_ids?: number[];
 }
 
 export interface AiRecommendResponse {

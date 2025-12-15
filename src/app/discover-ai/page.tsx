@@ -87,7 +87,7 @@ export default function DiscoverAiPage() {
             <div className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-white overflow-hidden pt-18">
                 <div className="pointer-events-none absolute inset-0">
                     <div className="absolute -left-10 top-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
-                    <div className="absolute right-0 top-1/3 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
+                    <div className="absolute right-0 top-24 md:top-32 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
                     <div className="absolute left-1/3 bottom-0 h-80 w-80 rounded-full bg-amber-500/10 blur-[90px]" />
                 </div>
 
@@ -99,11 +99,11 @@ export default function DiscoverAiPage() {
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                             <div>
                                 <p className="text-sm text-purple-200/80">
-                                    Pick up to {selectionLimit} moods ({
-                                        mode === 'all'
-                                            ? 'choose at least one to get recommendations'
-                                            : 'pick three to get recommendations'
-                                    })
+                                    Pick up to {selectionLimit} moods (
+                                    {mode === 'all'
+                                        ? 'choose at least one to get recommendations'
+                                        : 'pick three to get recommendations'}
+                                    )
                                 </p>
                                 <h2 className="text-2xl font-semibold text-white">
                                     What are you in the mood for?
@@ -118,19 +118,14 @@ export default function DiscoverAiPage() {
                         </div>
 
                         {mode === 'random' ? (
-                            <motion.div
-                                key={`${mode}-${round}`}
-                                variants={badgeContainerVariants}
-                                initial="hidden"
-                                animate="show"
-                                className="flex flex-wrap gap-3 md:gap-4"
-                            >
+                            <div key={`${mode}-${round}`} className="flex flex-wrap gap-3 md:gap-4">
                                 {randomBadges.map(badge => {
                                     const isSelected = selected.some(item => item.id === badge.id);
                                     const categoryColor =
                                         BADGE_COLORS[badge.category] ?? DEFAULT_BADGE_COLOR;
                                     const categoryTitleColor =
-                                        BADGE_TITLE_COLORS[badge.category] ?? DEFAULT_BADGE_TITLE_COLOR;
+                                        BADGE_TITLE_COLORS[badge.category] ??
+                                        DEFAULT_BADGE_TITLE_COLOR;
 
                                     return (
                                         <motion.button
@@ -153,7 +148,7 @@ export default function DiscoverAiPage() {
                                         </motion.button>
                                     );
                                 })}
-                            </motion.div>
+                            </div>
                         ) : (
                             <div className="space-y-6">
                                 {groupedBadges.map(([category, badges]) => {
@@ -195,7 +190,9 @@ export default function DiscoverAiPage() {
                                                                     : 'bg-black/50 border-white/10 text-gray-200 hover:border-purple-300/60 hover:text-white hover:shadow-[0_10px_30px_rgba(124,58,237,0.15)]'
                                                             }`}
                                                         >
-                                                            <span className="text-base">{badge.label}</span>
+                                                            <span className="text-base">
+                                                                {badge.label}
+                                                            </span>
                                                         </motion.button>
                                                     );
                                                 })}
@@ -234,8 +231,9 @@ export default function DiscoverAiPage() {
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-3 text-white">
-                                    <div className="flex flex-col leading-tight">Get recommendations</div>
-
+                                    <div className="flex flex-col leading-tight">
+                                        Get recommendations
+                                    </div>
                                 </div>
                             )}
                         </button>

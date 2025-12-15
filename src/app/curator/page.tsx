@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
-import LoadingOverlay from '@/components/LoadingOverlay';
+import { useEffect, useMemo, useState } from 'react';
+import CuratorLoading from '@/components/CuratorLoading';
 import { CURATOR_PERSONAS } from '@/data/curators';
 import useCuratorSession from '@/hooks/useCuratorSession';
 
@@ -40,6 +41,7 @@ function CuratorCard({
     description,
     selected,
     onSelect,
+    disabled,
 }: {
     id: string;
     name: string;
@@ -47,6 +49,7 @@ function CuratorCard({
     description: string;
     selected: boolean;
     onSelect: (id: string) => void;
+    disabled?: boolean;
 }) {
     return (
         <motion.button
@@ -54,11 +57,12 @@ function CuratorCard({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => onSelect(id)}
+            disabled={disabled}
             className={`group relative flex h-full flex-col gap-3 rounded-2xl border p-5 text-left transition-all duration-200 ${
                 selected
                     ? 'border-purple-400/60 bg-white/10 shadow-[0_10px_40px_rgba(124,58,237,0.25)]'
                     : 'border-white/5 bg-white/5 hover:border-purple-300/50 hover:bg-white/10'
-            }`}
+            } ${disabled ? 'cursor-not-allowed opacity-70' : ''}`}
         >
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -88,11 +92,13 @@ function ContextOption({
     description,
     active,
     onClick,
+    disabled,
 }: {
     label: string;
     description?: string;
     active: boolean;
     onClick: () => void;
+    disabled?: boolean;
 }) {
     return (
         <motion.button
@@ -100,11 +106,12 @@ function ContextOption({
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
             onClick={onClick}
+            disabled={disabled}
             className={`flex w-full flex-col gap-2 rounded-2xl border p-4 text-left transition-all ${
                 active
                     ? 'border-purple-400/60 bg-white/10 shadow-[0_10px_30px_rgba(124,58,237,0.2)] text-white'
                     : 'border-white/5 bg-white/5 text-gray-200 hover:border-purple-300/40 hover:text-white'
-            }`}
+            } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
         >
             <span className="text-base font-semibold">{label}</span>
             {description && <span className="text-sm text-gray-300 leading-relaxed">{description}</span>}
@@ -117,21 +124,24 @@ function TogglePill({
     description,
     active,
     onToggle,
+    disabled,
 }: {
     label: string;
     description: string;
     active: boolean;
     onToggle: () => void;
+    disabled?: boolean;
 }) {
     return (
         <button
             type="button"
             onClick={onToggle}
+            disabled={disabled}
             className={`flex flex-1 min-w-[180px] items-start gap-3 rounded-xl border p-3 text-left transition-all ${
                 active
                     ? 'border-emerald-400/60 bg-emerald-500/10 text-white'
                     : 'border-white/5 bg-white/5 text-gray-200 hover:border-emerald-300/50'
-            }`}
+            } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
         >
             <div className={`mt-1 h-5 w-5 rounded-full border ${active ? 'border-emerald-400 bg-emerald-400/20' : 'border-white/20 bg-white/5'}`} />
             <div className="space-y-1">
@@ -221,6 +231,7 @@ function CuratedMovieCard({
 }
 
 export default function CuratorPage() {
+    const [showSetup, setShowSetup] = useState(true);
     const {
         step,
         selectedCurator,
@@ -251,10 +262,28 @@ export default function CuratorPage() {
     const alternatives = result?.alternatives ?? [];
 
     const hasResults = Boolean(primaryPick || alternatives.length > 0);
-    const showResults = hasResults;
+    const showResults = hasResults || loading;
+    const disableInteractions = loading;
+
+    useEffect(() => {
+        if (hasResults && !loading) {
+            setShowSetup(false);
+        }
+    }, [hasResults, loading]);
+
+    const handleEditSelection = () => {
+        setShowSetup(true);
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        goToContext();
+    };
+
+    const loadingMessageText = useMemo(
+        () => loadingMessage ?? 'Curator is crafting a lineup...',
+        [loadingMessage],
+    );
 
     return (
-        <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 pt-18 text-white">
+        <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 pt-[72px] text-white">
             <div className="pointer-events-none absolute inset-0">
                 <div className="absolute left-[-10%] top-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
                 <div className="absolute right-[-6%] top-24 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -286,21 +315,22 @@ export default function CuratorPage() {
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="flex flex-wrap gap-3">
-                        <StepPill active={step === 1} label="Choose curator" number={1} />
-                        <StepPill active={step === 2} label="Set the context" number={2} />
-                        <StepPill active={step === 3} label="Confirm & start" number={3} />
-                    </div>
+                {(showSetup || !hasResults || loading) && (
+                    <div className={`space-y-6 ${disableInteractions ? 'pointer-events-none opacity-80' : ''}`}>
+                        <div className="flex flex-wrap gap-3">
+                            <StepPill active={step === 1} label="Choose curator" number={1} />
+                            <StepPill active={step === 2} label="Set the context" number={2} />
+                            <StepPill active={step === 3} label="Confirm & start" number={3} />
+                        </div>
 
-                    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 md:p-8 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
-                        <AnimatePresence mode="wait">
-                            {step === 1 && (
-                                <motion.div
-                                    key="step-1"
-                                    initial={{ opacity: 0, y: 16 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
+                        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 md:p-8 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+                            <AnimatePresence mode="wait">
+                                {step === 1 && (
+                                    <motion.div
+                                        key="step-1"
+                                        initial={{ opacity: 0, y: 16 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.25 }}
                                     className="space-y-6"
                                 >
@@ -323,6 +353,7 @@ export default function CuratorPage() {
                                                 description={persona.description}
                                                 selected={selectedCuratorId === persona.id}
                                                 onSelect={handleSelectCurator}
+                                                disabled={disableInteractions}
                                             />
                                         ))}
                                     </div>
@@ -330,9 +361,9 @@ export default function CuratorPage() {
                                         <button
                                             type="button"
                                             onClick={() => selectedCuratorId && goToContext()}
-                                            disabled={!selectedCuratorId}
+                                            disabled={!selectedCuratorId || disableInteractions}
                                             className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
-                                                selectedCuratorId
+                                                selectedCuratorId && !disableInteractions
                                                     ? 'bg-purple-500 text-white hover:bg-purple-400'
                                                     : 'bg-white/5 text-gray-400 cursor-not-allowed'
                                             }`}
@@ -346,15 +377,15 @@ export default function CuratorPage() {
                                 </motion.div>
                             )}
 
-                            {step === 2 && (
-                                <motion.div
-                                    key="step-2"
-                                    initial={{ opacity: 0, y: 16 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    transition={{ duration: 0.25 }}
-                                    className="space-y-8"
-                                >
+                                {step === 2 && (
+                                    <motion.div
+                                        key="step-2"
+                                        initial={{ opacity: 0, y: 16 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ duration: 0.25 }}
+                                        className="space-y-8"
+                                    >
                                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                                         <div>
                                             <p className="text-sm text-purple-200/80">Step 2</p>
@@ -402,6 +433,7 @@ export default function CuratorPage() {
                                                                 description={option.description}
                                                                 active={selectedOption?.id === option.id}
                                                                 onClick={() => handleSelectContext(group.id, option)}
+                                                                disabled={disableInteractions}
                                                             />
                                                         ))}
                                                     </div>
@@ -425,6 +457,7 @@ export default function CuratorPage() {
                                                     description={toggle.description}
                                                     active={toggleSelections[toggle.id]}
                                                     onToggle={() => handleToggle(toggle.id)}
+                                                    disabled={disableInteractions}
                                                 />
                                             ))}
                                         </div>
@@ -434,9 +467,9 @@ export default function CuratorPage() {
                                         <button
                                             type="button"
                                             onClick={goToSummary}
-                                            disabled={!canProceedToSummary}
+                                            disabled={!canProceedToSummary || disableInteractions}
                                             className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
-                                                canProceedToSummary
+                                                canProceedToSummary && !disableInteractions
                                                     ? 'bg-purple-500 text-white hover:bg-purple-400'
                                                     : 'bg-white/5 text-gray-400 cursor-not-allowed'
                                             }`}
@@ -472,6 +505,7 @@ export default function CuratorPage() {
                                                 type="button"
                                                 onClick={goToContext}
                                                 className="rounded-full border border-white/10 px-4 py-2 hover:border-purple-300/50"
+                                                disabled={disableInteractions}
                                             >
                                                 Adjust context
                                             </button>
@@ -479,6 +513,7 @@ export default function CuratorPage() {
                                                 type="button"
                                                 onClick={goBackToCurator}
                                                 className="rounded-full border border-white/10 px-4 py-2 hover:border-purple-300/50"
+                                                disabled={disableInteractions}
                                             >
                                                 Switch curator
                                             </button>
@@ -541,7 +576,7 @@ export default function CuratorPage() {
                         ref={resultsRef}
                         className="relative space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 md:p-8"
                     >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.2em] text-purple-200">Step 4</p>
                                 <h3 className="text-2xl font-semibold text-white">Curator result</h3>
@@ -549,13 +584,28 @@ export default function CuratorPage() {
                                     You get a lead pick plus alternatives with personality-driven notes.
                                 </p>
                             </div>
-                            {loading && (
-                                <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-purple-100">Live</span>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {loading && (
+                                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-purple-100">Live</span>
+                                )}
+                                {hasResults && !loading && (
+                                    <button
+                                        type="button"
+                                        onClick={handleEditSelection}
+                                        className="rounded-full border border-white/10 px-3 py-1 text-xs text-gray-100 hover:border-purple-300/60"
+                                    >
+                                        Edit selection
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="relative min-h-[480px]">
-                            <AnimatePresence>{loading && <LoadingOverlay message={loadingMessage} />}</AnimatePresence>
+                        <div className="relative min-h-[520px]">
+                            {loading && (
+                                <AnimatePresence>
+                                    <CuratorLoading mode={hasResults ? 'overlay' : 'full'} message={loadingMessageText} />
+                                </AnimatePresence>
+                            )}
                             {!result && !loading && (
                                 <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-gray-300">
                                     <SkeletonCard priority />

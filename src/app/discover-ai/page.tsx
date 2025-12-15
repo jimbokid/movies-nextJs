@@ -48,18 +48,6 @@ const badgeItemVariants: Variants = {
     },
 };
 
-const cardVariants: Variants = {
-    hidden: { opacity: 0, y: 24 },
-    show: {
-        opacity: 1,
-        y: 0,
-        transition: {
-            duration: 0.2,
-            ease: 'easeInOut',
-        },
-    },
-};
-
 export default function DiscoverAiPage() {
     const {
         mode,
@@ -300,10 +288,7 @@ export default function DiscoverAiPage() {
                         )}
 
                         {recommendations.length > 0 && (
-                            <motion.div
-                                variants={badgeContainerVariants}
-                                initial="hidden"
-                                animate="show"
+                            <div
                                 className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                             >
                                 <AnimatePresence>
@@ -317,12 +302,8 @@ export default function DiscoverAiPage() {
                                                 : null;
 
                                         return (
-                                            <motion.div
-                                                variants={cardVariants}
+                                            <div
                                                 key={movie.title + movie.tmdb_id}
-                                                initial="hidden"
-                                                animate="show"
-                                                exit={{ opacity: 0, y: 10 }}
                                                 className="group relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_70px_rgba(0,0,0,0.55)] overflow-hidden flex flex-col"
                                             >
                                                 {posterUrl ? (
@@ -396,11 +377,11 @@ export default function DiscoverAiPage() {
                                                         )}
                                                     </div>
                                                 </div>
-                                            </motion.div>
+                                            </div>
                                         );
                                     })}
                                 </AnimatePresence>
-                            </motion.div>
+                            </div>
                         )}
                     </section>
                 </div>

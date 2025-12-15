@@ -70,12 +70,16 @@ function CuratorCard({
                         {emoji}
                     </span>
                     <div>
-                        <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Curator</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                            Curator
+                        </p>
                         <h3 className="text-lg font-semibold text-white">{name}</h3>
                     </div>
                 </div>
                 {selected && (
-                    <span className="rounded-full bg-purple-500/80 px-3 py-1 text-xs font-semibold text-white">Selected</span>
+                    <span className="rounded-full bg-purple-500/80 px-3 py-1 text-xs font-semibold text-white">
+                        Selected
+                    </span>
                 )}
             </div>
             <p className="text-sm text-gray-200/90 leading-relaxed">{description}</p>
@@ -114,7 +118,9 @@ function ContextOption({
             } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
         >
             <span className="text-base font-semibold">{label}</span>
-            {description && <span className="text-sm text-gray-300 leading-relaxed">{description}</span>}
+            {description && (
+                <span className="text-sm text-gray-300 leading-relaxed">{description}</span>
+            )}
         </motion.button>
     );
 }
@@ -143,7 +149,9 @@ function TogglePill({
                     : 'border-white/5 bg-white/5 text-gray-200 hover:border-emerald-300/50'
             } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
         >
-            <div className={`mt-1 h-5 w-5 rounded-full border ${active ? 'border-emerald-400 bg-emerald-400/20' : 'border-white/20 bg-white/5'}`} />
+            <div
+                className={`mt-1 h-5 w-5 rounded-full border ${active ? 'border-emerald-400 bg-emerald-400/20' : 'border-white/20 bg-white/5'}`}
+            />
             <div className="space-y-1">
                 <p className="text-sm font-semibold">{label}</p>
                 <p className="text-xs text-gray-300 leading-relaxed">{description}</p>
@@ -188,7 +196,9 @@ function CuratedMovieCard({
     const card = (
         <div
             className={`group relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 ${
-                tmdb_id ? 'hover:border-purple-300/60 hover:shadow-[0_10px_30px_rgba(124,58,237,0.2)]' : 'opacity-80'
+                tmdb_id
+                    ? 'hover:border-purple-300/60 hover:shadow-[0_10px_30px_rgba(124,58,237,0.2)]'
+                    : 'opacity-80'
             }`}
         >
             <div className="relative aspect-[2/3] w-full">
@@ -210,24 +220,37 @@ function CuratedMovieCard({
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent opacity-80" />
             <div className="absolute inset-x-0 bottom-0 p-4 space-y-2">
                 <div className="flex items-center justify-between text-xs text-gray-200">
-                    <span className="rounded-full bg-white/10 px-3 py-1">{release_year ?? '—'}</span>
-                    {vote_average ? <span className="text-amber-200">⭐ {vote_average.toFixed(1)}</span> : null}
+                    <span className="rounded-full bg-white/10 px-3 py-1">
+                        {release_year ?? '—'}
+                    </span>
+                    {vote_average ? (
+                        <span className="text-amber-200">⭐ {vote_average.toFixed(1)}</span>
+                    ) : null}
                 </div>
                 <h4 className="text-lg font-semibold text-white">{title}</h4>
-                {reason && <p className="text-sm text-gray-200 leading-relaxed line-clamp-3">{reason}</p>}
+                {reason && (
+                    <p className="text-sm text-gray-200 leading-relaxed line-clamp-3">{reason}</p>
+                )}
             </div>
         </div>
     );
 
     if (tmdb_id) {
         return (
-            <Link href={`/detail/movie/${tmdb_id}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">
+            <Link
+                href={`/detail/movie/${tmdb_id}`}
+                className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
+            >
                 {card}
             </Link>
         );
     }
 
-    return <div className="cursor-not-allowed" aria-disabled>{card}</div>;
+    return (
+        <div className="cursor-not-allowed" aria-disabled>
+            {card}
+        </div>
+    );
 }
 
 export default function CuratorPage() {
@@ -293,13 +316,15 @@ export default function CuratorPage() {
             <div className="relative mx-auto max-w-6xl px-4 py-12 space-y-10">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-[0.2em] text-purple-200">AI Curator Session</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-purple-200">
+                            AI Curator Session
+                        </p>
                         <h1 className="text-3xl font-semibold md:text-4xl">
                             Sit down with a film mind—not an algorithm
                         </h1>
                         <p className="text-base text-gray-200 md:max-w-2xl">
-                            Choose an AI curator persona, set a quick context, and let them craft a focused session with a
-                            primary pick and bold alternatives.
+                            Choose an AI curator persona, set a quick context, and let them craft a
+                            focused session with a primary pick and bold alternatives.
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm text-gray-200">
@@ -315,31 +340,35 @@ export default function CuratorPage() {
                     </div>
                 </div>
 
-                {(showSetup || !hasResults || loading) && (
-                    <div className={`space-y-6 ${disableInteractions ? 'pointer-events-none opacity-80' : ''}`}>
-                        <div className="flex flex-wrap gap-3">
-                            <StepPill active={step === 1} label="Choose curator" number={1} />
-                            <StepPill active={step === 2} label="Set the context" number={2} />
-                            <StepPill active={step === 3} label="Confirm & start" number={3} />
-                        </div>
+                <div
+                    className={`space-y-6 ${disableInteractions ? 'pointer-events-none opacity-80' : ''}`}
+                >
+                    <div className="flex flex-wrap gap-3">
+                        <StepPill active={step === 1} label="Choose curator" number={1} />
+                        <StepPill active={step === 2} label="Set the context" number={2} />
+                        <StepPill active={step === 3} label="Confirm & start" number={3} />
+                    </div>
 
-                        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 md:p-8 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
-                            <AnimatePresence mode="wait">
-                                {step === 1 && (
-                                    <motion.div
-                                        key="step-1"
-                                        initial={{ opacity: 0, y: 16 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
+                    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 md:p-8 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+                        <AnimatePresence mode="wait">
+                            {step === 1 && (
+                                <motion.div
+                                    key="step-1"
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.25 }}
                                     className="space-y-6"
                                 >
                                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                                         <div>
                                             <p className="text-sm text-purple-200/80">Step 1</p>
-                                            <h2 className="text-2xl font-semibold text-white">Choose your curator</h2>
+                                            <h2 className="text-2xl font-semibold text-white">
+                                                Choose your curator
+                                            </h2>
                                             <p className="text-sm text-gray-300">
-                                                Each persona brings a distinct tone and curation lens. Pick one to guide the session.
+                                                Each persona brings a distinct tone and curation
+                                                lens. Pick one to guide the session.
                                             </p>
                                         </div>
                                     </div>
@@ -371,27 +400,31 @@ export default function CuratorPage() {
                                             Continue
                                         </button>
                                         <p className="text-sm text-gray-300">
-                                            Personas are free to try. We designed this flow to scale into saved sessions later.
+                                            Personas are free to try. We designed this flow to scale
+                                            into saved sessions later.
                                         </p>
                                     </div>
                                 </motion.div>
                             )}
 
-                                {step === 2 && (
-                                    <motion.div
-                                        key="step-2"
-                                        initial={{ opacity: 0, y: 16 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        transition={{ duration: 0.25 }}
-                                        className="space-y-8"
-                                    >
+                            {step === 2 && (
+                                <motion.div
+                                    key="step-2"
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="space-y-8"
+                                >
                                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                                         <div>
                                             <p className="text-sm text-purple-200/80">Step 2</p>
-                                            <h2 className="text-2xl font-semibold text-white">Set the context</h2>
+                                            <h2 className="text-2xl font-semibold text-white">
+                                                Set the context
+                                            </h2>
                                             <p className="text-sm text-gray-300">
-                                                Quick signals help the curator avoid generic answers and go intentional.
+                                                Quick signals help the curator avoid generic answers
+                                                and go intentional.
                                             </p>
                                         </div>
                                         <div className="flex flex-wrap gap-2 text-sm text-gray-200">
@@ -422,7 +455,9 @@ export default function CuratorPage() {
                                                             <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
                                                                 {group.title}
                                                             </p>
-                                                            <p className="text-sm text-gray-300">{group.description}</p>
+                                                            <p className="text-sm text-gray-300">
+                                                                {group.description}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                     <div className="grid gap-3">
@@ -431,8 +466,15 @@ export default function CuratorPage() {
                                                                 key={option.id}
                                                                 label={option.label}
                                                                 description={option.description}
-                                                                active={selectedOption?.id === option.id}
-                                                                onClick={() => handleSelectContext(group.id, option)}
+                                                                active={
+                                                                    selectedOption?.id === option.id
+                                                                }
+                                                                onClick={() =>
+                                                                    handleSelectContext(
+                                                                        group.id,
+                                                                        option,
+                                                                    )
+                                                                }
                                                                 disabled={disableInteractions}
                                                             />
                                                         ))}
@@ -485,7 +527,7 @@ export default function CuratorPage() {
                                 </motion.div>
                             )}
 
-                            {step === 3 && (
+                            {step >= 3 && (
                                 <motion.div
                                     key="step-3"
                                     initial={{ opacity: 0, y: 16 }}
@@ -497,8 +539,12 @@ export default function CuratorPage() {
                                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                                         <div>
                                             <p className="text-sm text-purple-200/80">Step 3</p>
-                                            <h2 className="text-2xl font-semibold text-white">Confirmation</h2>
-                                            <p className="text-sm text-gray-300">Make sure the tone and context feel right.</p>
+                                            <h2 className="text-2xl font-semibold text-white">
+                                                Confirmation
+                                            </h2>
+                                            <p className="text-sm text-gray-300">
+                                                Make sure the tone and context feel right.
+                                            </p>
                                         </div>
                                         <div className="flex flex-wrap gap-2 text-sm text-gray-200">
                                             <button
@@ -522,27 +568,44 @@ export default function CuratorPage() {
 
                                     <div className="grid gap-4 md:grid-cols-3">
                                         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Curator</p>
-                                            <h3 className="text-xl font-semibold">{selectedCurator?.emoji} {selectedCurator?.name}</h3>
-                                            <p className="text-sm text-gray-300">{selectedCurator?.description}</p>
+                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                                Curator
+                                            </p>
+                                            <h3 className="text-xl font-semibold">
+                                                {selectedCurator?.emoji} {selectedCurator?.name}
+                                            </h3>
+                                            <p className="text-sm text-gray-300">
+                                                {selectedCurator?.description}
+                                            </p>
                                         </div>
                                         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Context</p>
+                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                                Context
+                                            </p>
                                             <ul className="mt-2 space-y-2 text-sm text-gray-200">
                                                 {curatedSelections.map(item => (
-                                                    <li key={`${item.category}-${item.label}`} className="flex items-center gap-2">
+                                                    <li
+                                                        key={`${item.category}-${item.label}`}
+                                                        className="flex items-center gap-2"
+                                                    >
                                                         <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
                                                         <span>
-                                                            {item.label} <span className="text-gray-400">({item.category})</span>
+                                                            {item.label}{' '}
+                                                            <span className="text-gray-400">
+                                                                ({item.category})
+                                                            </span>
                                                         </span>
                                                     </li>
                                                 ))}
                                             </ul>
                                         </div>
                                         <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/20 via-white/5 to-black/40 p-4">
-                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Session vibe</p>
+                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                                Session vibe
+                                            </p>
                                             <p className="mt-2 text-sm text-gray-200">
-                                                Expect a lead pick and a handful of bold alternates. No safe lists, no filler.
+                                                Expect a lead pick and a handful of bold alternates.
+                                                No safe lists, no filler.
                                             </p>
                                         </div>
                                     </div>
@@ -561,7 +624,8 @@ export default function CuratorPage() {
                                             {loading ? 'Curator is thinking...' : 'Start session'}
                                         </button>
                                         <p className="text-sm text-gray-300">
-                                            Future upgrades: save sessions, ask follow-ups, or pull a second opinion.
+                                            Future upgrades: save sessions, ask follow-ups, or pull
+                                            a second opinion.
                                         </p>
                                     </div>
                                     {error && <p className="text-sm text-amber-300">{error}</p>}
@@ -571,22 +635,29 @@ export default function CuratorPage() {
                     </div>
                 </div>
 
-                {showResults ? (
+                {showResults && (
                     <div
                         ref={resultsRef}
                         className="relative space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 md:p-8"
                     >
                         <div className="flex items-center justify-between gap-3">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.2em] text-purple-200">Step 4</p>
-                                <h3 className="text-2xl font-semibold text-white">Curator result</h3>
+                                <p className="text-xs uppercase tracking-[0.2em] text-purple-200">
+                                    Step 4
+                                </p>
+                                <h3 className="text-2xl font-semibold text-white">
+                                    Curator result
+                                </h3>
                                 <p className="text-sm text-gray-300">
-                                    You get a lead pick plus alternatives with personality-driven notes.
+                                    You get a lead pick plus alternatives with personality-driven
+                                    notes.
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
                                 {loading && (
-                                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-purple-100">Live</span>
+                                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-purple-100">
+                                        Live
+                                    </span>
                                 )}
                                 {hasResults && !loading && (
                                     <button
@@ -603,13 +674,18 @@ export default function CuratorPage() {
                         <div className="relative min-h-[520px]">
                             {loading && (
                                 <AnimatePresence>
-                                    <CuratorLoading mode={hasResults ? 'overlay' : 'full'} message={loadingMessageText} />
+                                    <CuratorLoading
+                                        mode={hasResults ? 'overlay' : 'full'}
+                                        message={loadingMessageText}
+                                    />
                                 </AnimatePresence>
                             )}
                             {!result && !loading && (
                                 <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-gray-300">
                                     <SkeletonCard priority />
-                                    <p className="text-sm">Kick off a session to see a curator-led lineup.</p>
+                                    <p className="text-sm">
+                                        Kick off a session to see a curator-led lineup.
+                                    </p>
                                 </div>
                             )}
 
@@ -620,7 +696,8 @@ export default function CuratorPage() {
                                             {result.curator.emoji} {result.curator.name} says
                                         </p>
                                         <p className="mt-2 text-lg text-white leading-relaxed">
-                                            {result.curator_note || 'Here is what I would line up for you tonight.'}
+                                            {result.curator_note ||
+                                                'Here is what I would line up for you tonight.'}
                                         </p>
                                     </div>
 
@@ -641,7 +718,9 @@ export default function CuratorPage() {
                                             )}
                                         </div>
                                         <div className="space-y-3">
-                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Session actions</p>
+                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                                Session actions
+                                            </p>
                                             <button
                                                 type="button"
                                                 onClick={goBackToCurator}
@@ -657,14 +736,17 @@ export default function CuratorPage() {
                                                 Shuffle context
                                             </button>
                                             <p className="text-sm text-gray-300">
-                                                Future add-ons: ask for justification, save to a watchlist, or request a second opinion.
+                                                Future add-ons: ask for justification, save to a
+                                                watchlist, or request a second opinion.
                                             </p>
                                         </div>
                                     </div>
 
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Alternatives</span>
+                                            <span className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                                Alternatives
+                                            </span>
                                             <span className="h-px w-12 bg-white/10" />
                                         </div>
                                         {alternatives.length > 0 ? (
@@ -693,8 +775,6 @@ export default function CuratorPage() {
                             )}
                         </div>
                     </div>
-                ) : (
-                    <div ref={resultsRef} className="min-h-[520px]" aria-hidden />
                 )}
             </div>
         </main>

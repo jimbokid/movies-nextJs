@@ -58,14 +58,6 @@ export function useCuratorSession() {
         return () => clearInterval(interval);
     }, [loading]);
 
-    useEffect(() => {
-        if (!result || loading) return;
-
-        setTimeout(() => {
-            resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 250);
-    }, [result, loading]);
-
     const selectedCurator = useMemo(
         () => CURATOR_PERSONAS.find(curator => curator.id === selectedCuratorId) ?? null,
         [selectedCuratorId],

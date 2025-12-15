@@ -113,11 +113,11 @@ function normalizeGenreName(name: string) {
 
 function getGenreNames(movie: AiRecommendedMovie) {
     const ids = Array.isArray(movie.genre_ids) ? movie.genre_ids : [];
-    const names = ids
+
+    return ids
         .map(id => TMDB_GENRE_MAP.get(id))
         .filter((value): value is string => Boolean(value))
         .map(normalizeGenreName);
-    return names;
 }
 
 function matchesMoodRule(movie: AiRecommendedMovie, rule: MoodRule) {
@@ -129,14 +129,17 @@ function matchesMoodRule(movie: AiRecommendedMovie, rule: MoodRule) {
     );
     if (hasExcludedGenre) return false;
 
-    const hasExcludedKeyword = rule.excludeKeywords.some(keyword => overviewText.includes(keyword.toLowerCase()));
+    const hasExcludedKeyword = rule.excludeKeywords.some(keyword =>
+        overviewText.includes(keyword.toLowerCase()),
+    );
     if (hasExcludedKeyword) return false;
 
-    const includeMatch =
+    return (
         rule.includeGenres.length === 0 ||
-        rule.includeGenres.some(include => genreNames.some(name => name.includes(include.toLowerCase())));
-
-    return includeMatch;
+        rule.includeGenres.some(include =>
+            genreNames.some(name => name.includes(include.toLowerCase())),
+        )
+    );
 }
 
 function validateMoodFit(movies: AiRecommendedMovie[], rules: MoodRule[]) {
@@ -448,6 +451,10 @@ function buildPrompt({
         `Movies must be recognizable/popular (no ultra-underground festival-only picks). Keep variety across decades and genres and avoid repeating the same director twice unless essential. ` +
         `Avoid repeating classic canon defaults every session (e.g., Fight Club, Shawshank, Inception) and avoid ultra-niche or hard-to-find titles. ` +
         `Prefer movies with strong TMDB presence and widely available/streamable options when possible. ` +
+        `IMPORTANT OUTPUT RULES:\n` +
+        `- "curator_note" MUST be 1–2 short sentences ONLY (max 25 words total).\n` +
+        `- Do NOT add explanations outside JSON.\n` +
+        `- Do NOT exceed sentence limits.\n\n` +
         `Return JSON with fields: {"curator_note": string, "primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year": number, "reason"?: string}. ` +
         `Ensure at least ${ALTERNATIVE_TARGET_MIN} and at most ${ALTERNATIVE_TARGET_MAX} alternatives and exactly ${PRIMARY_TARGET} primary pick. ` +
         `Include at least one unconventional choice within mainstream/recognizable bounds, prefer diversity by decade and country when relevant, and penalize repeats from prior sessions. ` +
@@ -496,7 +503,6 @@ async function requestCuratorBatch({
 
 async function repairMovies({
     curator,
-    selected,
     need,
     bannedTitles,
     moodRules,
@@ -925,8 +931,8 @@ export async function POST(req: Request) {
                 .filter(movie => isWithinYearRange(movie.release_year, curator))
                 .filter(movie => {
                     const key = normalizeTitle(movie.title);
-                    if (seen.has(key) || bannedTitles.includes(key)) return false;
-                    return true;
+                    return !(seen.has(key) || bannedTitles.includes(key));
+
                 })
                 .slice(0, need);
             const reEnriched = await Promise.all(filteredRepairs.map(enrichMovie));
@@ -978,8 +984,8 @@ export async function POST(req: Request) {
                     .filter(movie => {
                         const key = normalizeTitle(movie.title);
                         if (replaceSet.has(key)) return true;
-                        if (bannedTitles.includes(key)) return false;
-                        return true;
+                        return !bannedTitles.includes(key);
+
                     })
                     .slice(0, replaceCount);
 

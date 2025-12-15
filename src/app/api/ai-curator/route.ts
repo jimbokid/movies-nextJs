@@ -23,6 +23,12 @@ const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 const PRIMARY_TARGET = 1;
 const ALTERNATIVE_TARGET_MIN = 3;
 const ALTERNATIVE_TARGET_MAX = 6;
+const MOVIES_NUMBER_LIMIT = PRIMARY_TARGET + ALTERNATIVE_TARGET_MAX;
+const PREVIOUS_TITLES_MAX = 30;
+
+function isModernEnough(year?: number) {
+    return typeof year === 'number' && year >= 1985;
+}
 
 function sanitizeJsonString(content: string): string {
     const withoutFences = content.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -159,13 +165,14 @@ async function searchTmdbMovie(title: string, releaseYear?: number): Promise<Tmd
     }
 }
 
-async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovie> {
+async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovie | null> {
     if (!TMDB_API_KEY) return movie;
 
     const meta = await searchTmdbMovie(movie.title, movie.release_year);
 
     if (!meta) {
-        return movie;
+        // Treat as too obscure for curator experience
+        return null;
     }
 
     const releaseYearFromMeta = meta.release_date
@@ -185,7 +192,124 @@ async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovi
 async function enrichRecommendations(primary: AiRecommendedMovie | null, alternatives: AiRecommendedMovie[]) {
     const enrichedPrimary = primary ? await enrichMovie(primary) : null;
     const enrichedAlternatives = await Promise.all(alternatives.map(enrichMovie));
-    return { primary: enrichedPrimary, alternatives: enrichedAlternatives };
+    const validAlternatives = enrichedAlternatives.filter(Boolean) as AiRecommendedMovie[];
+    return { primary: enrichedPrimary ?? null, alternatives: validAlternatives };
+}
+
+const normalizeTitle = (title: string) => title.trim().toLowerCase();
+
+function buildPrompt({
+    curator,
+    selected,
+    previousTitles,
+    need,
+    strict,
+}: {
+    curator: (typeof CURATOR_PERSONAS)[number];
+    selected: CuratorSelection[];
+    previousTitles: string[];
+    need: number;
+    strict?: boolean;
+}) {
+    const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
+    const avoidTitles = previousTitles.slice(0, PREVIOUS_TITLES_MAX).join(', ');
+    const avoidLines = avoidTitles
+        ? `Do not recommend any of these titles: ${avoidTitles}.`
+        : 'Avoid generic safe picks and overly common defaults.';
+
+    return (
+        `You are ${curator.name} ${curator.emoji} with a tone that is ${curator.tone}. Your style is ${curator.promptStyle}.\n\n` +
+        `Context selections:\n${contextLines}\n\n` +
+        `${avoidLines}\n` +
+        `Recommend exactly ${need} films total. Only include films with release_year >= 1985; prefer 1995 or newer when possible. ` +
+        `Movies must be recognizable/popular (no ultra-underground festival-only picks). Keep variety across decades and genres and avoid repeating the same director twice unless essential. ` +
+        `Avoid repeating classic canon defaults every session (e.g., Fight Club, Shawshank, Inception) and avoid ultra-niche or hard-to-find titles. ` +
+        `Prefer movies with strong TMDB presence and widely available/streamable options when possible. ` +
+        `Return JSON with fields: {"curator_note": string, "primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year": number, "reason"?: string}. ` +
+        `Ensure at least ${ALTERNATIVE_TARGET_MIN} and at most ${ALTERNATIVE_TARGET_MAX} alternatives and exactly ${PRIMARY_TARGET} primary pick. ` +
+        `Include at least one unconventional choice within mainstream/recognizable bounds, prefer diversity by decade and country when relevant, and penalize repeats from prior sessions. ` +
+        `Respond with raw JSON only—no markdown, no commentary.${strict ? ' Output strictly valid JSON.' : ''}`
+    );
+}
+
+async function requestCuratorBatch({
+    curator,
+    selected,
+    previousTitles,
+    strict,
+}: {
+    curator: (typeof CURATOR_PERSONAS)[number];
+    selected: CuratorSelection[];
+    previousTitles: string[];
+    strict?: boolean;
+}) {
+    const userPrompt = buildPrompt({
+        curator,
+        selected,
+        previousTitles,
+        need: MOVIES_NUMBER_LIMIT,
+        strict,
+    });
+
+    const completion = await openai!.chat.completions.create({
+        model: OPENAI_MODEL,
+        temperature: 1,
+        messages: [
+            {
+                role: 'system',
+                content:
+                    'You are an AI movie curator. Always respond with strict JSON and never include markdown or code fences. ' +
+                    'Enforce persona tone in notes. Only include movies released in 1985 or later and prefer 1995-2025.',
+            },
+            { role: 'user', content: userPrompt },
+        ],
+    });
+
+    return completion.choices?.[0]?.message?.content ?? '';
+}
+
+async function repairMovies({
+    curator,
+    selected,
+    need,
+    bannedTitles,
+}: {
+    curator: (typeof CURATOR_PERSONAS)[number];
+    selected: CuratorSelection[];
+    need: number;
+    bannedTitles: string[];
+}): Promise<AiRecommendedMovie[]> {
+    const dedupedBanned = Array.from(new Set(bannedTitles.map(normalizeTitle)));
+    const avoidList = dedupedBanned.slice(0, PREVIOUS_TITLES_MAX).join(', ');
+    const userPrompt =
+        `Return ONLY a JSON array of exactly ${need} movies. All release_year must be >= 1985 (prefer 1995-2025). ` +
+        `Movies must be recognizable/popular and not obscure. Avoid repeating any of these titles: ${avoidList}. ` +
+        `No markdown, no code fences.`;
+
+    const completion = await openai!.chat.completions.create({
+        model: OPENAI_MODEL,
+        temperature: 1,
+        messages: [
+            {
+                role: 'system',
+                content:
+                    `You are ${curator.name} ${curator.emoji}. Respond only with JSON arrays of movie objects {"title": string, "release_year": number, "reason"?: string}.`,
+            },
+            { role: 'user', content: userPrompt },
+        ],
+    });
+
+    const content = completion.choices?.[0]?.message?.content ?? '';
+    const sanitized = sanitizeJsonString(content);
+
+    try {
+        const parsed = JSON.parse(sanitized);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(normalizeMovie).filter(Boolean) as AiRecommendedMovie[];
+    } catch (error) {
+        console.error('Failed to repair curator movies', error);
+        return [];
+    }
 }
 
 export async function POST(req: Request) {
@@ -214,49 +338,81 @@ export async function POST(req: Request) {
         return NextResponse.json({ message: 'Unknown curator persona.' }, { status: 404 });
     }
 
-    const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
-    const avoidLines = previousTitles.length
-        ? `Avoid repeating these titles: ${previousTitles.join(', ')}.`
-        : 'Avoid generic safe picks and well-worn blockbuster answers.';
-
-    const userPrompt =
-        `You are ${curator.name} ${curator.emoji} with a tone that is ${curator.tone}. Your style is ${curator.promptStyle}.\n\n` +
-        `Context selections:\n${contextLines}\n\n` +
-        `${avoidLines}\n` +
-        `Always recommend exactly ${PRIMARY_TARGET + ALTERNATIVE_TARGET_MAX} films total with clear reasons. ` +
-        `Return JSON with fields: {"curator_note": string, "primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year"?: number, "reason"?: string}. ` +
-        `Ensure at least ${ALTERNATIVE_TARGET_MIN} and at most ${ALTERNATIVE_TARGET_MAX} alternatives and exactly ${PRIMARY_TARGET} primary pick. ` +
-        `Include at least one unconventional choice, prefer diversity by decade and country when relevant, and penalize repeats from prior sessions. ` +
-        `Speak in your persona voice inside curator_note and make each reason feel intentional. ` +
-        `Respond with raw JSON only—no markdown, no commentary.`;
-
     try {
-        const completion = await openai.chat.completions.create({
-            model: OPENAI_MODEL,
-            temperature: 1,
-            messages: [
-                {
-                    role: 'system',
-                    content:
-                        'You are an AI movie curator. Always respond with strict JSON and never include markdown or code fences. Enforce persona tone in notes.',
-                },
-                { role: 'user', content: userPrompt },
-            ],
+        const initialContent = await requestCuratorBatch({ curator, selected, previousTitles });
+        let { curator_note, primary, alternatives } = parseAiResponse(initialContent);
+
+        if (!primary && alternatives.length === 0) {
+            const strictContent = await requestCuratorBatch({ curator, selected, previousTitles, strict: true });
+            ({ curator_note, primary, alternatives } = parseAiResponse(strictContent));
+        }
+
+        const combined: AiRecommendedMovie[] = [];
+        if (primary) combined.push(primary);
+        combined.push(...alternatives);
+
+        const filtered = combined.filter(movie => isModernEnough(movie.release_year));
+
+        const deduped: AiRecommendedMovie[] = [];
+        const seen = new Set<string>();
+        filtered.forEach(movie => {
+            const key = normalizeTitle(movie.title);
+            if (!seen.has(key)) {
+                deduped.push(movie);
+                seen.add(key);
+            }
         });
 
-        const content = completion.choices?.[0]?.message?.content ?? '';
-        const { curator_note, primary, alternatives } = parseAiResponse(content);
+        let curatedMovies = deduped.slice(0, MOVIES_NUMBER_LIMIT);
+        let bannedTitles = [...previousTitles.map(normalizeTitle), ...curatedMovies.map(movie => normalizeTitle(movie.title))];
 
-        const prunedAlternatives = alternatives.slice(0, ALTERNATIVE_TARGET_MAX);
-        const resolvedPrimary = primary ?? prunedAlternatives[0] ?? null;
-        const fallbackAlternatives = resolvedPrimary
-            ? prunedAlternatives.filter(item => item.title !== resolvedPrimary.title)
-            : prunedAlternatives;
+        if (curatedMovies.length < MOVIES_NUMBER_LIMIT) {
+            const needed = MOVIES_NUMBER_LIMIT - curatedMovies.length;
+            const repairs = await repairMovies({ curator, selected, need: needed, bannedTitles });
+            const repairFiltered = repairs.filter(movie => isModernEnough(movie?.release_year));
+            const repairDeduped = repairFiltered.filter(movie => {
+                const key = normalizeTitle(movie.title);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+            curatedMovies = [...curatedMovies, ...repairDeduped].slice(0, MOVIES_NUMBER_LIMIT);
+        }
+
+        let resolvedPrimary = curatedMovies[0] ?? null;
+        let fallbackAlternatives = curatedMovies.slice(1);
 
         const { primary: enrichedPrimary, alternatives: enrichedAlternatives } = await enrichRecommendations(
             resolvedPrimary,
             fallbackAlternatives,
         );
+
+        // Drop items that failed TMDB validation
+        const validAlternatives = enrichedAlternatives.filter(Boolean);
+        const enrichedList = [enrichedPrimary, ...validAlternatives].filter(Boolean) as AiRecommendedMovie[];
+
+        // Re-run repair if enrichment removed items
+        if (enrichedList.length < MOVIES_NUMBER_LIMIT) {
+            const need = MOVIES_NUMBER_LIMIT - enrichedList.length;
+            bannedTitles = [...bannedTitles, ...enrichedList.map(movie => normalizeTitle(movie.title))];
+            const repairs = await repairMovies({ curator, selected, need, bannedTitles });
+            const filteredRepairs = repairs
+                .filter(movie => isModernEnough(movie.release_year))
+                .filter(movie => {
+                    const key = normalizeTitle(movie.title);
+                    if (seen.has(key) || bannedTitles.includes(key)) return false;
+                    return true;
+                })
+                .slice(0, need);
+            const reEnriched = await Promise.all(filteredRepairs.map(enrichMovie));
+            const reEnrichedValid = reEnriched.filter(Boolean) as AiRecommendedMovie[];
+            const merged = [...enrichedList, ...reEnrichedValid].slice(0, MOVIES_NUMBER_LIMIT);
+            resolvedPrimary = merged[0] ?? null;
+            fallbackAlternatives = merged.slice(1);
+        } else {
+            resolvedPrimary = enrichedList[0] ?? null;
+            fallbackAlternatives = enrichedList.slice(1);
+        }
 
         const payload: CuratorRecommendationResponse = {
             curator: {
@@ -264,9 +420,13 @@ export async function POST(req: Request) {
                 name: curator.name,
                 emoji: curator.emoji,
             },
-            curator_note: curator_note || 'Here is what I would line up for you tonight.',
-            primary: enrichedPrimary,
-            alternatives: enrichedAlternatives,
+            curator_note:
+                curator_note ||
+                (fallbackAlternatives.length + (resolvedPrimary ? 1 : 0) >= ALTERNATIVE_TARGET_MIN
+                    ? 'Here is what I would line up for you tonight.'
+                    : "Couldn't find enough modern matches—try different moods."),
+            primary: resolvedPrimary,
+            alternatives: fallbackAlternatives,
         };
 
         return NextResponse.json(payload, { status: 200 });

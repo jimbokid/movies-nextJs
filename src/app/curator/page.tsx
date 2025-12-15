@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import CuratorLoading from '@/components/CuratorLoading';
 import { CURATOR_PERSONAS } from '@/data/curators';
 import useCuratorSession from '@/hooks/useCuratorSession';
@@ -254,7 +254,6 @@ function CuratedMovieCard({
 }
 
 export default function CuratorPage() {
-    const [showSetup, setShowSetup] = useState(true);
     const {
         step,
         selectedCurator,
@@ -288,14 +287,7 @@ export default function CuratorPage() {
     const showResults = hasResults || loading;
     const disableInteractions = loading;
 
-    useEffect(() => {
-        if (hasResults && !loading) {
-            setShowSetup(false);
-        }
-    }, [hasResults, loading]);
-
     const handleEditSelection = () => {
-        setShowSetup(true);
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         goToContext();
     };

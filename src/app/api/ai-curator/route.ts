@@ -1,12 +1,12 @@
 import axios from 'axios';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { AiRecommendedMovie } from '@/types/discoverAi';
+import { AiRecommendedMovie, CuratorPersona } from '@/types/discoverAi';
 import { CuratorRecommendationResponse, CuratorSelection } from '@/types/curator';
 import { CURATOR_PERSONAS } from '@/data/curators';
 
 interface RequestBody {
-    curatorId?: string;
+    curatorId?: CuratorPersona['id'];
     selected?: CuratorSelection[];
     previousTitles?: string[];
 }
@@ -44,9 +44,18 @@ const POPCORN_KEYWORDS = [
     'popcorn',
 ];
 const POPCORN_GENRE_IDS = new Set([28, 35, 80, 53, 12, 36, 878, 10751, 16]);
+const CURRENT_YEAR = new Date().getFullYear();
+const POPULARITY_THRESHOLD = 25;
+const VOTE_AVERAGE_THRESHOLD = 6.3;
 
-function isModernEnough(year?: number) {
-    return typeof year === 'number' && year >= 1985;
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isWithinYearRange(year: number | undefined, curator: CuratorPersona) {
+    if (typeof year !== 'number') return false;
+    const maxYear = curator.maxYear ?? CURRENT_YEAR;
+    return year >= curator.minYear && year <= maxYear;
 }
 
 function isPopcornMovie(movie: AiRecommendedMovie) {
@@ -64,6 +73,16 @@ function countPopcornMovies(movies: AiRecommendedMovie[]) {
 
 function isPopcornEnough(movies: AiRecommendedMovie[]) {
     return countPopcornMovies(movies) >= 4;
+}
+
+function isPopularEnough(movie: AiRecommendedMovie) {
+    const hasVote = typeof movie.vote_average === 'number' && movie.vote_average >= VOTE_AVERAGE_THRESHOLD;
+    const hasPopularity = typeof movie.popularity === 'number' && movie.popularity >= POPULARITY_THRESHOLD;
+    return hasVote || hasPopularity;
+}
+
+function hasMainstreamMomentum(movies: AiRecommendedMovie[]) {
+    return movies.filter(isPopularEnough).length >= 4;
 }
 
 function sanitizeJsonString(content: string): string {
@@ -88,25 +107,34 @@ function parseYear(value: unknown): number | undefined {
     return undefined;
 }
 
-function normalizeMovie(item: any): AiRecommendedMovie | null {
-    const title = typeof item?.title === 'string' ? item.title.trim() : '';
+function normalizeMovie(item: unknown): AiRecommendedMovie | null {
+    if (!isRecord(item)) return null;
+
+    const title = typeof item.title === 'string' ? item.title.trim() : '';
     if (!title) return null;
 
     const release_year = parseYear(item.release_year);
     const vote_average =
-        typeof item?.vote_average === 'number'
+        typeof item.vote_average === 'number'
             ? item.vote_average
-            : typeof item?.vote_average === 'string'
+            : typeof item.vote_average === 'string'
               ? Number.parseFloat(item.vote_average)
+              : undefined;
+    const popularity =
+        typeof item.popularity === 'number'
+            ? item.popularity
+            : typeof item.popularity === 'string'
+              ? Number.parseFloat(item.popularity)
               : undefined;
 
     return {
         title,
-        reason: typeof item?.reason === 'string' ? item.reason.trim() : undefined,
-        poster_path: typeof item?.poster_path === 'string' ? item.poster_path : undefined,
-        release_year: release_year,
-        overview: typeof item?.overview === 'string' ? item.overview : undefined,
+        reason: typeof item.reason === 'string' ? item.reason.trim() : undefined,
+        poster_path: typeof item.poster_path === 'string' ? item.poster_path : undefined,
+        release_year,
+        overview: typeof item.overview === 'string' ? item.overview : undefined,
         vote_average: Number.isFinite(vote_average) ? vote_average : undefined,
+        popularity: Number.isFinite(popularity) ? popularity : undefined,
     } satisfies AiRecommendedMovie;
 }
 
@@ -118,24 +146,30 @@ function parseAiResponse(content: string): {
     const cleaned = sanitizeJsonString(content);
 
     try {
-        const parsed = JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned) as unknown;
 
-        const curateFromList = (list: any[]): { primary: AiRecommendedMovie | null; alternatives: AiRecommendedMovie[] } => {
+        const curateFromList = (
+            list: unknown[],
+        ): { primary: AiRecommendedMovie | null; alternatives: AiRecommendedMovie[] } => {
             const normalized = list.map(normalizeMovie).filter(Boolean) as AiRecommendedMovie[];
-            const primary = normalized[0] ?? null;
-            const alternatives = normalized.slice(1, ALTERNATIVE_TARGET_MAX + 1);
-            return { primary, alternatives };
+            const primaryMovie = normalized[0] ?? null;
+            const alternativesList = normalized.slice(1, ALTERNATIVE_TARGET_MAX + 1);
+            return { primary: primaryMovie, alternatives: alternativesList };
         };
 
         if (Array.isArray(parsed)) {
             return { curator_note: '', ...curateFromList(parsed) };
         }
 
-        const primary = normalizeMovie((parsed as any).primary) ?? null;
-        const alternativesArray: any[] = Array.isArray((parsed as any).alternatives)
-            ? (parsed as any).alternatives
-            : Array.isArray((parsed as any).suggestions)
-              ? (parsed as any).suggestions
+        if (!isRecord(parsed)) {
+            return { curator_note: '', primary: null, alternatives: [] };
+        }
+
+        const primary = normalizeMovie(parsed.primary) ?? null;
+        const alternativesArray: unknown[] = Array.isArray(parsed.alternatives)
+            ? parsed.alternatives
+            : Array.isArray(parsed.suggestions)
+              ? parsed.suggestions
               : [];
 
         const alternatives = alternativesArray
@@ -143,13 +177,15 @@ function parseAiResponse(content: string): {
             .filter(Boolean)
             .slice(0, ALTERNATIVE_TARGET_MAX) as AiRecommendedMovie[];
 
+        const curatorNote = typeof parsed.curator_note === 'string' ? parsed.curator_note : '';
+
         if (!primary && Array.isArray(parsed)) {
-            const fromArray = curateFromList(parsed as any);
-            return { curator_note: String((parsed as any).curator_note ?? ''), ...fromArray };
+            const fromArray = curateFromList(parsed as unknown[]);
+            return { curator_note: curatorNote, ...fromArray };
         }
 
         return {
-            curator_note: typeof (parsed as any).curator_note === 'string' ? (parsed as any).curator_note : '',
+            curator_note: curatorNote,
             primary,
             alternatives,
         };
@@ -167,6 +203,7 @@ interface TmdbMovieMeta {
     overview?: string | null;
     vote_average?: number | null;
     genre_ids?: number[];
+    popularity?: number | null;
 }
 
 async function searchTmdbMovie(title: string, releaseYear?: number): Promise<TmdbMovieMeta | null> {
@@ -224,6 +261,7 @@ async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovi
         overview: meta.overview ?? movie.overview,
         vote_average: typeof meta.vote_average === 'number' ? meta.vote_average : movie.vote_average,
         genre_ids: Array.isArray(meta.genre_ids) ? meta.genre_ids : movie.genre_ids,
+        popularity: typeof meta.popularity === 'number' ? meta.popularity : movie.popularity,
     };
 }
 
@@ -243,12 +281,14 @@ function buildPrompt({
     need,
     strict,
 }: {
-    curator: (typeof CURATOR_PERSONAS)[number];
+    curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
     need: number;
     strict?: boolean;
 }) {
+    const maxYear = curator.maxYear ?? CURRENT_YEAR;
+    const preferredStart = Math.max(curator.minYear, 1995);
     const personaRules = () => {
         const anchors = [
             curator.personaBias ? `Persona bias: ${curator.personaBias}.` : '',
@@ -265,7 +305,7 @@ function buildPrompt({
         switch (curator.tasteBand) {
             case 'popcorn':
                 return (
-                    `${anchors}\nYou are not a critic. Pick crowd-pleasers with big franchises, popular comedies, early 2000s energy, buddy cops, street racing, guilty pleasures, and weekend fun. Favor mainstream action/comedy/crime/adventure/thriller vibes. If unsure, choose the more mainstream option.`
+                    `${anchors}\nYou are not a critic. Pick crowd-pleasers with big franchises, popular comedies, early 2000s energy, buddy cops, street racing, guilty pleasures, and weekend fun. Favor mainstream action/comedy/crime/adventure/thriller vibes. You are recommending for a regular guy who wants fun, fast, mainstream movies. Prefer box-office hits, franchises, viral or widely known films. Avoid slow, artsy, experimental, or festival-style movies. If unsure, choose the more popular option.`
                 );
             case 'auteur':
                 return (
@@ -294,14 +334,14 @@ function buildPrompt({
         `You are ${curator.name} ${curator.emoji} with a tone that is ${curator.tone}. Your style is ${curator.promptStyle}.\n${personaRules()}\n\n` +
         `Context selections:\n${contextLines}\n\n` +
         `${avoidLines}\n` +
-        `Recommend exactly ${need} films total. Only include films with release_year >= 1985; prefer 1995 or newer when possible. ` +
+        `Recommend exactly ${need} films total. Only include films released between ${curator.minYear} and ${maxYear}. If any title falls outside this window, replace it. Prefer ${preferredStart} or newer when possible. ` +
         `Movies must be recognizable/popular (no ultra-underground festival-only picks). Keep variety across decades and genres and avoid repeating the same director twice unless essential. ` +
         `Avoid repeating classic canon defaults every session (e.g., Fight Club, Shawshank, Inception) and avoid ultra-niche or hard-to-find titles. ` +
         `Prefer movies with strong TMDB presence and widely available/streamable options when possible. ` +
         `Return JSON with fields: {"curator_note": string, "primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year": number, "reason"?: string}. ` +
         `Ensure at least ${ALTERNATIVE_TARGET_MIN} and at most ${ALTERNATIVE_TARGET_MAX} alternatives and exactly ${PRIMARY_TARGET} primary pick. ` +
         `Include at least one unconventional choice within mainstream/recognizable bounds, prefer diversity by decade and country when relevant, and penalize repeats from prior sessions. ` +
-        `Respond with raw JSON only—no markdown, no commentary.${strict ? ' Output strictly valid JSON.' : ''}`
+        `If unsure, choose the more mainstream option. Respond with raw JSON only—no markdown, no commentary.${strict ? ' Output strictly valid JSON.' : ''}`
     );
 }
 
@@ -311,7 +351,7 @@ async function requestCuratorBatch({
     previousTitles,
     strict,
 }: {
-    curator: (typeof CURATOR_PERSONAS)[number];
+    curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
     strict?: boolean;
@@ -332,7 +372,7 @@ async function requestCuratorBatch({
                 role: 'system',
                 content:
                     'You are an AI movie curator. Always respond with strict JSON and never include markdown or code fences. ' +
-                    'Enforce persona tone in notes. Only include movies released in 1985 or later and prefer 1995-2025.',
+                    `Enforce persona tone in notes. Only include movies released between ${curator.minYear} and ${curator.maxYear ?? CURRENT_YEAR} and prefer modern picks.`,
             },
             { role: 'user', content: userPrompt },
         ],
@@ -347,7 +387,7 @@ async function repairMovies({
     need,
     bannedTitles,
 }: {
-    curator: (typeof CURATOR_PERSONAS)[number];
+    curator: CuratorPersona;
     selected: CuratorSelection[];
     need: number;
     bannedTitles: string[];
@@ -355,7 +395,9 @@ async function repairMovies({
     const dedupedBanned = Array.from(new Set(bannedTitles.map(normalizeTitle)));
     const avoidList = dedupedBanned.slice(0, PREVIOUS_TITLES_MAX).join(', ');
     const userPrompt =
-        `Return ONLY a JSON array of exactly ${need} movies. All release_year must be >= 1985 (prefer 1995-2025). ` +
+        `Return ONLY a JSON array of exactly ${need} movies. Only include films released between ${curator.minYear} and ${
+            curator.maxYear ?? CURRENT_YEAR
+        } (prefer modern picks). ` +
         `Movies must be recognizable/popular and not obscure. Avoid repeating any of these titles: ${avoidList}. ` +
         `Stay consistent with the ${curator.name} persona: ${curator.personaBias ?? curator.promptStyle}. If unsure, choose the more mainstream option. ` +
         `No markdown, no code fences.`;
@@ -392,7 +434,7 @@ async function repairPopcornMovies({
     replaceTitles,
     bannedTitles,
 }: {
-    curator: (typeof CURATOR_PERSONAS)[number];
+    curator: CuratorPersona;
     selected: CuratorSelection[];
     replaceTitles: string[];
     bannedTitles: string[];
@@ -404,7 +446,9 @@ async function repairPopcornMovies({
 
     const userPrompt =
         `Replace these titles with mainstream popcorn crowd-pleasers: ${replaceTitles.join(', ')}. ` +
-        `Return ONLY a JSON array of exactly ${replaceTitles.length} movies. All release_year must be >= 1985 (prefer 1995-2025). ` +
+        `Return ONLY a JSON array of exactly ${replaceTitles.length} movies. Only include films released between ${curator.minYear} and ${
+            curator.maxYear ?? CURRENT_YEAR
+        } (prefer modern picks). ` +
         `Favor big franchises, street racing, buddy cop, raunchy/teen comedy, heist, disaster, superhero, or wild fun vibes. ` +
         `Avoid slow cinema, art-house festival picks, and experimental tone. Avoid any of these titles: ${avoidList}. ` +
         `Context selections to consider:\n${contextLines}. If unsure, pick the more mainstream/fun option. No markdown, no code fences.`;
@@ -435,6 +479,56 @@ async function repairPopcornMovies({
     }
 }
 
+async function repairPopcornPopularity({
+    curator,
+    selected,
+    replaceTitles,
+    bannedTitles,
+}: {
+    curator: CuratorPersona;
+    selected: CuratorSelection[];
+    replaceTitles: string[];
+    bannedTitles: string[];
+}): Promise<AiRecommendedMovie[]> {
+    const avoidList = Array.from(new Set([...replaceTitles, ...bannedTitles].map(normalizeTitle)))
+        .slice(0, PREVIOUS_TITLES_MAX)
+        .join(', ');
+    const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
+
+    const userPrompt =
+        `Replace these titles with mainstream, popular popcorn hits: ${replaceTitles.join(', ')}. ` +
+        `Return ONLY a JSON array of exactly ${replaceTitles.length} movies released between ${curator.minYear} and ${
+            curator.maxYear ?? CURRENT_YEAR
+        }. Prefer box-office hits, franchises, viral comedies, crowd-pleasing thrillers. ` +
+        `At least ${Math.min(4, replaceTitles.length)} should be widely known with strong ratings or popularity. Avoid any of these titles: ${avoidList}. ` +
+        `Context selections to consider:\n${contextLines}. Respond with JSON only, no markdown or code fences.`;
+
+    const completion = await openai!.chat.completions.create({
+        model: OPENAI_MODEL,
+        temperature: 1,
+        messages: [
+            {
+                role: 'system',
+                content:
+                    'You are a mainstream popcorn recommender. Respond only with JSON arrays of movies {"title": string, "release_year": number, "reason"?: string}.',
+            },
+            { role: 'user', content: userPrompt },
+        ],
+    });
+
+    const content = completion.choices?.[0]?.message?.content ?? '';
+    const sanitized = sanitizeJsonString(content);
+
+    try {
+        const parsed = JSON.parse(sanitized);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(normalizeMovie).filter(Boolean) as AiRecommendedMovie[];
+    } catch (error) {
+        console.error('Failed to repair popcorn popularity', error);
+        return [];
+    }
+}
+
 async function enforcePopcornBias({
     movies,
     curator,
@@ -442,20 +536,70 @@ async function enforcePopcornBias({
     previousTitles,
 }: {
     movies: AiRecommendedMovie[];
-    curator: (typeof CURATOR_PERSONAS)[number];
+    curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
 }): Promise<AiRecommendedMovie[]> {
-    if (isPopcornEnough(movies)) return movies;
+    let workingList = [...movies];
 
-    const notPopcorn = movies.filter(movie => !isPopcornMovie(movie));
-    const replaceCount = Math.min(Math.max(4 - countPopcornMovies(movies), 2), notPopcorn.length || MOVIES_NUMBER_LIMIT);
-    if (replaceCount === 0) return movies;
+    if (!hasMainstreamMomentum(workingList)) {
+        const weak = workingList.filter(movie => !isPopularEnough(movie));
+        const replaceCount = Math.min(
+            Math.max(4 - workingList.filter(isPopularEnough).length, 2),
+            weak.length || MOVIES_NUMBER_LIMIT,
+        );
+
+        if (replaceCount > 0) {
+            const replaceTitles = weak.slice(0, replaceCount).map(movie => movie.title);
+            const bannedTitles = [
+                ...previousTitles.map(normalizeTitle),
+                ...workingList.map(movie => normalizeTitle(movie.title)),
+                ...replaceTitles.map(normalizeTitle),
+            ];
+
+            const repairs = await repairPopcornPopularity({
+                curator,
+                selected,
+                replaceTitles,
+                bannedTitles,
+            });
+
+            const baseList = workingList.filter(movie => !replaceTitles.includes(movie.title));
+            const seen = new Set(baseList.map(movie => normalizeTitle(movie.title)));
+
+            const filteredRepairs = repairs
+                .filter(movie => isWithinYearRange(movie.release_year, curator))
+                .filter(movie => {
+                    const key = normalizeTitle(movie.title);
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .slice(0, replaceCount);
+
+            const enriched = await Promise.all(filteredRepairs.map(enrichMovie));
+            const validRepairs = enriched.filter(Boolean) as AiRecommendedMovie[];
+
+            const fallbackShortage = replaceCount - validRepairs.length;
+            const fallbackMovies = fallbackShortage > 0 ? weak.slice(0, fallbackShortage) : [];
+
+            workingList = [...baseList, ...validRepairs, ...fallbackMovies].slice(0, MOVIES_NUMBER_LIMIT);
+        }
+    }
+
+    if (isPopcornEnough(workingList)) return workingList;
+
+    const notPopcorn = workingList.filter(movie => !isPopcornMovie(movie));
+    const replaceCount = Math.min(
+        Math.max(4 - countPopcornMovies(workingList), 2),
+        notPopcorn.length || MOVIES_NUMBER_LIMIT,
+    );
+    if (replaceCount === 0) return workingList;
 
     const replaceTitles = notPopcorn.slice(0, replaceCount).map(movie => movie.title);
     const bannedTitles = [
         ...previousTitles.map(normalizeTitle),
-        ...movies.map(movie => normalizeTitle(movie.title)),
+        ...workingList.map(movie => normalizeTitle(movie.title)),
         ...replaceTitles.map(normalizeTitle),
     ];
 
@@ -466,11 +610,11 @@ async function enforcePopcornBias({
         bannedTitles,
     });
 
-    const baseList = movies.filter(movie => !replaceTitles.includes(movie.title));
+    const baseList = workingList.filter(movie => !replaceTitles.includes(movie.title));
     const seen = new Set(baseList.map(movie => normalizeTitle(movie.title)));
 
     const filteredRepairs = repairs
-        .filter(movie => isModernEnough(movie.release_year))
+        .filter(movie => isWithinYearRange(movie.release_year, curator))
         .filter(movie => {
             const key = normalizeTitle(movie.title);
             if (seen.has(key)) return false;
@@ -486,8 +630,6 @@ async function enforcePopcornBias({
     const fallbackMovies = fallbackShortage > 0 ? notPopcorn.slice(0, fallbackShortage) : [];
 
     const merged = [...baseList, ...validRepairs, ...fallbackMovies].slice(0, MOVIES_NUMBER_LIMIT);
-
-    if (isPopcornEnough(merged)) return merged;
 
     return merged;
 }
@@ -531,7 +673,7 @@ export async function POST(req: Request) {
         if (primary) combined.push(primary);
         combined.push(...alternatives);
 
-        const filtered = combined.filter(movie => isModernEnough(movie.release_year));
+        const filtered = combined.filter(movie => isWithinYearRange(movie.release_year, curator));
 
         const deduped: AiRecommendedMovie[] = [];
         const seen = new Set<string>();
@@ -549,7 +691,7 @@ export async function POST(req: Request) {
         if (curatedMovies.length < MOVIES_NUMBER_LIMIT) {
             const needed = MOVIES_NUMBER_LIMIT - curatedMovies.length;
             const repairs = await repairMovies({ curator, selected, need: needed, bannedTitles });
-            const repairFiltered = repairs.filter(movie => isModernEnough(movie?.release_year));
+            const repairFiltered = repairs.filter(movie => isWithinYearRange(movie?.release_year, curator));
             const repairDeduped = repairFiltered.filter(movie => {
                 const key = normalizeTitle(movie.title);
                 if (seen.has(key)) return false;
@@ -577,7 +719,7 @@ export async function POST(req: Request) {
             bannedTitles = [...bannedTitles, ...enrichedList.map(movie => normalizeTitle(movie.title))];
             const repairs = await repairMovies({ curator, selected, need, bannedTitles });
             const filteredRepairs = repairs
-                .filter(movie => isModernEnough(movie.release_year))
+                .filter(movie => isWithinYearRange(movie.release_year, curator))
                 .filter(movie => {
                     const key = normalizeTitle(movie.title);
                     if (seen.has(key) || bannedTitles.includes(key)) return false;

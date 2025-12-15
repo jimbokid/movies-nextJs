@@ -165,6 +165,7 @@ function CuratedMovieCard({
     release_year,
     vote_average,
     priority,
+    tmdb_id,
 }: {
     title: string;
     reason?: string;
@@ -172,9 +173,14 @@ function CuratedMovieCard({
     release_year?: number;
     vote_average?: number;
     priority?: boolean;
+    tmdb_id?: number;
 }) {
-    return (
-        <div className={`group relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5`}>
+    const card = (
+        <div
+            className={`group relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 ${
+                tmdb_id ? 'hover:border-purple-300/60 hover:shadow-[0_10px_30px_rgba(124,58,237,0.2)]' : 'opacity-80'
+            }`}
+        >
             <div className="relative aspect-[2/3] w-full">
                 {poster_path ? (
                     <Image
@@ -202,6 +208,16 @@ function CuratedMovieCard({
             </div>
         </div>
     );
+
+    if (tmdb_id) {
+        return (
+            <Link href={`/detail/movie/${tmdb_id}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">
+                {card}
+            </Link>
+        );
+    }
+
+    return <div className="cursor-not-allowed" aria-disabled>{card}</div>;
 }
 
 export default function CuratorPage() {
@@ -234,8 +250,11 @@ export default function CuratorPage() {
     const primaryPick = result?.primary;
     const alternatives = result?.alternatives ?? [];
 
+    const hasResults = Boolean(primaryPick || alternatives.length > 0);
+    const showResults = loading || hasResults;
+
     return (
-        <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 text-white">
+        <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 pt-18 text-white">
             <div className="pointer-events-none absolute inset-0">
                 <div className="absolute left-[-10%] top-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
                 <div className="absolute right-[-6%] top-24 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -517,106 +536,117 @@ export default function CuratorPage() {
                     </div>
                 </div>
 
-                <div ref={resultsRef} className="relative space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 md:p-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-purple-200">Step 4</p>
-                            <h3 className="text-2xl font-semibold text-white">Curator result</h3>
-                            <p className="text-sm text-gray-300">
-                                You get a lead pick plus alternatives with personality-driven notes.
-                            </p>
-                        </div>
-                        {loading && <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-purple-100">Live</span>}
-                    </div>
-
-                    <div className="relative min-h-[480px]">
-                        <AnimatePresence>{loading && <LoadingOverlay message={loadingMessage} />}</AnimatePresence>
-                        {!result && !loading && (
-                            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-gray-300">
-                                <SkeletonCard priority />
-                                <p className="text-sm">Kick off a session to see a curator-led lineup.</p>
+                {showResults ? (
+                    <div
+                        ref={resultsRef}
+                        className="relative space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 md:p-8"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.2em] text-purple-200">Step 4</p>
+                                <h3 className="text-2xl font-semibold text-white">Curator result</h3>
+                                <p className="text-sm text-gray-300">
+                                    You get a lead pick plus alternatives with personality-driven notes.
+                                </p>
                             </div>
-                        )}
+                            {loading && (
+                                <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-purple-100">Live</span>
+                            )}
+                        </div>
 
-                        {result && (
-                            <div className="space-y-6">
-                                <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-transparent to-white/5 p-4">
-                                    <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
-                                        {result.curator.emoji} {result.curator.name} says
-                                    </p>
-                                    <p className="mt-2 text-lg text-white leading-relaxed">
-                                        {result.curator_note || 'Here is what I would line up for you tonight.'}
-                                    </p>
+                        <div className="relative min-h-[480px]">
+                            <AnimatePresence>{loading && <LoadingOverlay message={loadingMessage} />}</AnimatePresence>
+                            {!result && !loading && (
+                                <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-gray-300">
+                                    <SkeletonCard priority />
+                                    <p className="text-sm">Kick off a session to see a curator-led lineup.</p>
                                 </div>
+                            )}
 
-                                <div className="grid gap-4 md:grid-cols-3">
-                                    <div className="md:col-span-2">
-                                        {primaryPick ? (
-                                            <CuratedMovieCard
-                                                title={primaryPick.title}
-                                                reason={primaryPick.reason}
-                                                poster_path={primaryPick.poster_path}
-                                                release_year={primaryPick.release_year}
-                                                vote_average={primaryPick.vote_average}
-                                                priority
-                                            />
-                                        ) : (
-                                            <SkeletonCard priority />
-                                        )}
-                                    </div>
-                                    <div className="space-y-3">
-                                        <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Session actions</p>
-                                        <button
-                                            type="button"
-                                            onClick={goBackToCurator}
-                                            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-semibold text-white hover:border-purple-300/50"
-                                        >
-                                            Try another curator
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={resetContext}
-                                            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-semibold text-white hover:border-purple-300/50"
-                                        >
-                                            Shuffle context
-                                        </button>
-                                        <p className="text-sm text-gray-300">
-                                            Future add-ons: ask for justification, save to a watchlist, or request a second opinion.
+                            {result && (
+                                <div className="space-y-6">
+                                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-transparent to-white/5 p-4">
+                                        <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                            {result.curator.emoji} {result.curator.name} says
+                                        </p>
+                                        <p className="mt-2 text-lg text-white leading-relaxed">
+                                            {result.curator_note || 'Here is what I would line up for you tonight.'}
                                         </p>
                                     </div>
-                                </div>
 
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Alternatives</span>
-                                        <span className="h-px w-12 bg-white/10" />
-                                    </div>
-                                    {alternatives.length > 0 ? (
-                                        <div className="grid gap-4 md:grid-cols-3">
-                                            {alternatives.slice(0, 6).map(movie => (
+                                    <div className="grid gap-4 md:grid-cols-3">
+                                        <div className="md:col-span-2">
+                                            {primaryPick ? (
                                                 <CuratedMovieCard
-                                                    key={`${movie.title}-${movie.release_year ?? 'n/a'}`}
-                                                    title={movie.title}
-                                                    reason={movie.reason}
-                                                    poster_path={movie.poster_path}
-                                                    release_year={movie.release_year}
-                                                    vote_average={movie.vote_average}
+                                                    title={primaryPick.title}
+                                                    reason={primaryPick.reason}
+                                                    poster_path={primaryPick.poster_path}
+                                                    release_year={primaryPick.release_year}
+                                                    vote_average={primaryPick.vote_average}
+                                                    tmdb_id={primaryPick.tmdb_id}
+                                                    priority
                                                 />
-                                            ))}
+                                            ) : (
+                                                <SkeletonCard priority />
+                                            )}
                                         </div>
-                                    ) : (
-                                        <div className="grid gap-4 md:grid-cols-3">
-                                            <SkeletonCard />
-                                            <SkeletonCard />
-                                            <SkeletonCard />
+                                        <div className="space-y-3">
+                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Session actions</p>
+                                            <button
+                                                type="button"
+                                                onClick={goBackToCurator}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-semibold text-white hover:border-purple-300/50"
+                                            >
+                                                Try another curator
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={resetContext}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-semibold text-white hover:border-purple-300/50"
+                                            >
+                                                Shuffle context
+                                            </button>
+                                            <p className="text-sm text-gray-300">
+                                                Future add-ons: ask for justification, save to a watchlist, or request a second opinion.
+                                            </p>
                                         </div>
-                                    )}
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Alternatives</span>
+                                            <span className="h-px w-12 bg-white/10" />
+                                        </div>
+                                        {alternatives.length > 0 ? (
+                                            <div className="grid gap-4 md:grid-cols-3">
+                                                {alternatives.slice(0, 6).map(movie => (
+                                                    <CuratedMovieCard
+                                                        key={`${movie.title}-${movie.release_year ?? 'n/a'}`}
+                                                        title={movie.title}
+                                                        reason={movie.reason}
+                                                        poster_path={movie.poster_path}
+                                                        release_year={movie.release_year}
+                                                        vote_average={movie.vote_average}
+                                                        tmdb_id={movie.tmdb_id}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="grid gap-4 md:grid-cols-3">
+                                                <SkeletonCard />
+                                                <SkeletonCard />
+                                                <SkeletonCard />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div ref={resultsRef} className="min-h-[520px]" aria-hidden />
+                )}
             </div>
-        </div>
+        </main>
     );
 }

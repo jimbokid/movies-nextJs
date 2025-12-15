@@ -1,19 +1,4 @@
-export type TasteBand = 'popcorn' | 'auteur' | 'indie' | 'film_school';
-
-export interface CuratorPersona {
-    id: string;
-    name: string;
-    emoji: string;
-    tone: string;
-    promptStyle: string;
-    description: string;
-    tasteBand: TasteBand;
-    allowedGenres?: string[];
-    avoidGenres?: string[];
-    examplesGood: string[];
-    examplesAvoid: string[];
-    personaBias?: string;
-}
+import { CuratorPersona } from '@/types/discoverAi';
 
 export const CURATOR_PERSONAS: CuratorPersona[] = [
     {
@@ -25,6 +10,7 @@ export const CURATOR_PERSONAS: CuratorPersona[] = [
         description:
             'Direct, auteur-driven picks with bold opinions and zero patience for bland choices.',
         tasteBand: 'auteur',
+        minYear: 1985,
         allowedGenres: ['crime', 'thriller', 'drama', 'neo-noir', 'revenge', 'sci-fi'],
         avoidGenres: ['raunchy comedy', 'pure slapstick'],
         examplesGood: ['Heat', 'Sicario', 'Prisoners', 'Oldboy', 'Drive', 'No Country for Old Men'],
@@ -41,6 +27,7 @@ export const CURATOR_PERSONAS: CuratorPersona[] = [
         description:
             'Warm, no-fuss recommendations that feel like a friend insisting you trust them on this one.',
         tasteBand: 'popcorn',
+        minYear: 2010,
         allowedGenres: [
             'action',
             'street racing',
@@ -68,6 +55,7 @@ export const CURATOR_PERSONAS: CuratorPersona[] = [
         description:
             'Obsessed with underseen gems, international festivals, and the feelings films leave behind.',
         tasteBand: 'indie',
+        minYear: 1985,
         allowedGenres: ['drama', 'coming-of-age', 'intimate horror', 'romance', 'character study'],
         avoidGenres: ['massive franchises'],
         examplesGood: ['Lady Bird', 'The Farewell', 'Short Term 12', 'Past Lives', 'Good Time', 'Aftersun'],
@@ -84,6 +72,7 @@ export const CURATOR_PERSONAS: CuratorPersona[] = [
         description:
             'Breaks down movements, influences, and why a film matters—without losing the fun.',
         tasteBand: 'film_school',
+        minYear: 1985,
         allowedGenres: ['drama', 'thriller', 'sci-fi', 'animation'],
         avoidGenres: ['direct-to-video schlock'],
         examplesGood: ['Mulholland Drive', 'Zodiac', 'Memories of Murder', 'Arrival', 'Spider-Verse'],

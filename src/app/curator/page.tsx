@@ -251,7 +251,7 @@ export default function CuratorPage() {
     const alternatives = result?.alternatives ?? [];
 
     const hasResults = Boolean(primaryPick || alternatives.length > 0);
-    const showResults = loading || hasResults;
+    const showResults = hasResults;
 
     return (
         <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 pt-18 text-white">

@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import { AiRecommendedMovie, CuratorPersona } from '@/types/discoverAi';
 import { CuratorRecommendationResponse, CuratorSelection } from '@/types/curator';
 import { CURATOR_PERSONAS } from '@/data/curators';
+import { getActiveMoodRules, MoodRule } from './moodRules';
 
 interface RequestBody {
     curatorId?: CuratorPersona['id'];
@@ -47,6 +48,27 @@ const POPCORN_GENRE_IDS = new Set([28, 35, 80, 53, 12, 36, 878, 10751, 16]);
 const CURRENT_YEAR = new Date().getFullYear();
 const POPULARITY_THRESHOLD = 25;
 const VOTE_AVERAGE_THRESHOLD = 6.3;
+const TMDB_GENRE_MAP = new Map<number, string>([
+    [28, 'Action'],
+    [12, 'Adventure'],
+    [16, 'Animation'],
+    [35, 'Comedy'],
+    [80, 'Crime'],
+    [99, 'Documentary'],
+    [18, 'Drama'],
+    [10751, 'Family'],
+    [14, 'Fantasy'],
+    [36, 'History'],
+    [27, 'Horror'],
+    [10402, 'Music'],
+    [9648, 'Mystery'],
+    [10749, 'Romance'],
+    [878, 'Sci-Fi'],
+    [10770, 'TV Movie'],
+    [53, 'Thriller'],
+    [10752, 'War'],
+    [37, 'Western'],
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -83,6 +105,58 @@ function isPopularEnough(movie: AiRecommendedMovie) {
 
 function hasMainstreamMomentum(movies: AiRecommendedMovie[]) {
     return movies.filter(isPopularEnough).length >= 4;
+}
+
+function normalizeGenreName(name: string) {
+    return name.trim().toLowerCase();
+}
+
+function getGenreNames(movie: AiRecommendedMovie) {
+    const ids = Array.isArray(movie.genre_ids) ? movie.genre_ids : [];
+    const names = ids
+        .map(id => TMDB_GENRE_MAP.get(id))
+        .filter((value): value is string => Boolean(value))
+        .map(normalizeGenreName);
+    return names;
+}
+
+function matchesMoodRule(movie: AiRecommendedMovie, rule: MoodRule) {
+    const genreNames = getGenreNames(movie);
+    const overviewText = `${movie.overview ?? ''} ${movie.reason ?? ''}`.toLowerCase();
+
+    const hasExcludedGenre = rule.excludeGenres.some(exclude =>
+        genreNames.some(name => name.includes(exclude.toLowerCase())),
+    );
+    if (hasExcludedGenre) return false;
+
+    const hasExcludedKeyword = rule.excludeKeywords.some(keyword => overviewText.includes(keyword.toLowerCase()));
+    if (hasExcludedKeyword) return false;
+
+    const includeMatch =
+        rule.includeGenres.length === 0 ||
+        rule.includeGenres.some(include => genreNames.some(name => name.includes(include.toLowerCase())));
+
+    return includeMatch;
+}
+
+function validateMoodFit(movies: AiRecommendedMovie[], rules: MoodRule[]) {
+    if (!rules.length) {
+        return { invalidTitles: [] as string[], passCount: movies.length };
+    }
+
+    const invalidTitles: string[] = [];
+    let passCount = 0;
+
+    movies.forEach(movie => {
+        const matchesAll = rules.every(rule => matchesMoodRule(movie, rule));
+        if (matchesAll) {
+            passCount += 1;
+        } else {
+            invalidTitles.push(movie.title);
+        }
+    });
+
+    return { invalidTitles, passCount };
 }
 
 function sanitizeJsonString(content: string): string {
@@ -274,21 +348,52 @@ async function enrichRecommendations(primary: AiRecommendedMovie | null, alterna
 
 const normalizeTitle = (title: string) => title.trim().toLowerCase();
 
+function buildMoodRulesText(rules: MoodRule[], tasteBand: CuratorPersona['tasteBand']) {
+    if (!rules.length) return '';
+
+    const includeGenres = Array.from(
+        new Set(rules.flatMap(rule => rule.includeGenres.map(normalizeGenreName))),
+    ).join(', ');
+    const excludeGenres = Array.from(
+        new Set(rules.flatMap(rule => rule.excludeGenres.map(normalizeGenreName))),
+    ).join(', ');
+    const excludeKeywords = Array.from(
+        new Set(rules.flatMap(rule => rule.excludeKeywords.map(keyword => keyword.toLowerCase()))),
+    ).join(', ');
+    const toneHints = rules.map(rule => `- ${rule.toneHint}`).join('\n');
+
+    const popcornSpecific =
+        tasteBand === 'popcorn'
+            ? '\nIf mood includes fun/comfort, lean into mainstream comedies, action-comedies, romcoms, feel-good hits. Avoid prestige crime/thriller unless user explicitly asks for dark vibes.'
+            : '';
+
+    return (
+        `Mood-fit rules (must follow):\n${toneHints}${popcornSpecific}\n` +
+        `${includeGenres ? `Prefer genres: ${includeGenres}. ` : ''}` +
+        `${excludeGenres ? `Avoid genres: ${excludeGenres}. ` : ''}` +
+        `${excludeKeywords ? `Avoid themes/keywords: ${excludeKeywords}. ` : ''}` +
+        'If unsure, choose the lighter, more popular option. Do not recommend movies that are primarily drama/thriller/crime when the mood is fun/comfort unless explicitly requested.'
+    );
+}
+
 function buildPrompt({
     curator,
     selected,
     previousTitles,
     need,
     strict,
+    moodRules,
 }: {
     curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
     need: number;
     strict?: boolean;
+    moodRules: MoodRule[];
 }) {
     const maxYear = curator.maxYear ?? CURRENT_YEAR;
     const preferredStart = Math.max(curator.minYear, 1995);
+    const moodRuleText = buildMoodRulesText(moodRules, curator.tasteBand);
     const personaRules = () => {
         const anchors = [
             curator.personaBias ? `Persona bias: ${curator.personaBias}.` : '',
@@ -305,7 +410,11 @@ function buildPrompt({
         switch (curator.tasteBand) {
             case 'popcorn':
                 return (
-                    `${anchors}\nYou are not a critic. Pick crowd-pleasers with big franchises, popular comedies, early 2000s energy, buddy cops, street racing, guilty pleasures, and weekend fun. Favor mainstream action/comedy/crime/adventure/thriller vibes. You are recommending for a regular guy who wants fun, fast, mainstream movies. Prefer box-office hits, franchises, viral or widely known films. Avoid slow, artsy, experimental, or festival-style movies. If unsure, choose the more popular option.`
+                    `${anchors}\nYou are not a critic. Pick crowd-pleasers with big franchises, popular comedies, early 2000s energy, buddy cops, street racing, guilty pleasures, and weekend fun. Favor mainstream action/comedy/crime/adventure/thriller vibes. You are recommending for a regular guy who wants fun, fast, mainstream movies. Prefer box-office hits, franchises, viral or widely known films. Avoid slow, artsy, experimental, or festival-style movies. If unsure, choose the more popular option. ${
+                        moodRules.length
+                            ? 'For fun/comfort vibes, lean extra hard into mainstream comedies, action-comedies, feel-good crowd-pleasers—no prestige crime unless the user explicitly asked for dark/crime.'
+                            : ''
+                    }`
                 );
             case 'auteur':
                 return (
@@ -333,6 +442,7 @@ function buildPrompt({
     return (
         `You are ${curator.name} ${curator.emoji} with a tone that is ${curator.tone}. Your style is ${curator.promptStyle}.\n${personaRules()}\n\n` +
         `Context selections:\n${contextLines}\n\n` +
+        `${moodRuleText}` +
         `${avoidLines}\n` +
         `Recommend exactly ${need} films total. Only include films released between ${curator.minYear} and ${maxYear}. If any title falls outside this window, replace it. Prefer ${preferredStart} or newer when possible. ` +
         `Movies must be recognizable/popular (no ultra-underground festival-only picks). Keep variety across decades and genres and avoid repeating the same director twice unless essential. ` +
@@ -350,11 +460,13 @@ async function requestCuratorBatch({
     selected,
     previousTitles,
     strict,
+    moodRules,
 }: {
     curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
     strict?: boolean;
+    moodRules: MoodRule[];
 }) {
     const userPrompt = buildPrompt({
         curator,
@@ -362,6 +474,7 @@ async function requestCuratorBatch({
         previousTitles,
         need: MOVIES_NUMBER_LIMIT,
         strict,
+        moodRules,
     });
 
     const completion = await openai!.chat.completions.create({
@@ -386,18 +499,22 @@ async function repairMovies({
     selected,
     need,
     bannedTitles,
+    moodRules,
 }: {
     curator: CuratorPersona;
     selected: CuratorSelection[];
     need: number;
     bannedTitles: string[];
+    moodRules: MoodRule[];
 }): Promise<AiRecommendedMovie[]> {
     const dedupedBanned = Array.from(new Set(bannedTitles.map(normalizeTitle)));
     const avoidList = dedupedBanned.slice(0, PREVIOUS_TITLES_MAX).join(', ');
+    const moodRuleText = buildMoodRulesText(moodRules, curator.tasteBand);
     const userPrompt =
         `Return ONLY a JSON array of exactly ${need} movies. Only include films released between ${curator.minYear} and ${
             curator.maxYear ?? CURRENT_YEAR
         } (prefer modern picks). ` +
+        `${moodRuleText}\n` +
         `Movies must be recognizable/popular and not obscure. Avoid repeating any of these titles: ${avoidList}. ` +
         `Stay consistent with the ${curator.name} persona: ${curator.personaBias ?? curator.promptStyle}. If unsure, choose the more mainstream option. ` +
         `No markdown, no code fences.`;
@@ -433,22 +550,26 @@ async function repairPopcornMovies({
     selected,
     replaceTitles,
     bannedTitles,
+    moodRules,
 }: {
     curator: CuratorPersona;
     selected: CuratorSelection[];
     replaceTitles: string[];
     bannedTitles: string[];
+    moodRules: MoodRule[];
 }): Promise<AiRecommendedMovie[]> {
     const avoidList = Array.from(new Set([...replaceTitles, ...bannedTitles].map(normalizeTitle)))
         .slice(0, PREVIOUS_TITLES_MAX)
         .join(', ');
     const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
 
+    const moodRuleText = buildMoodRulesText(moodRules, curator.tasteBand);
     const userPrompt =
         `Replace these titles with mainstream popcorn crowd-pleasers: ${replaceTitles.join(', ')}. ` +
         `Return ONLY a JSON array of exactly ${replaceTitles.length} movies. Only include films released between ${curator.minYear} and ${
             curator.maxYear ?? CURRENT_YEAR
         } (prefer modern picks). ` +
+        `${moodRuleText}\n` +
         `Favor big franchises, street racing, buddy cop, raunchy/teen comedy, heist, disaster, superhero, or wild fun vibes. ` +
         `Avoid slow cinema, art-house festival picks, and experimental tone. Avoid any of these titles: ${avoidList}. ` +
         `Context selections to consider:\n${contextLines}. If unsure, pick the more mainstream/fun option. No markdown, no code fences.`;
@@ -484,22 +605,26 @@ async function repairPopcornPopularity({
     selected,
     replaceTitles,
     bannedTitles,
+    moodRules,
 }: {
     curator: CuratorPersona;
     selected: CuratorSelection[];
     replaceTitles: string[];
     bannedTitles: string[];
+    moodRules: MoodRule[];
 }): Promise<AiRecommendedMovie[]> {
     const avoidList = Array.from(new Set([...replaceTitles, ...bannedTitles].map(normalizeTitle)))
         .slice(0, PREVIOUS_TITLES_MAX)
         .join(', ');
     const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
 
+    const moodRuleText = buildMoodRulesText(moodRules, curator.tasteBand);
     const userPrompt =
         `Replace these titles with mainstream, popular popcorn hits: ${replaceTitles.join(', ')}. ` +
         `Return ONLY a JSON array of exactly ${replaceTitles.length} movies released between ${curator.minYear} and ${
             curator.maxYear ?? CURRENT_YEAR
         }. Prefer box-office hits, franchises, viral comedies, crowd-pleasing thrillers. ` +
+        `${moodRuleText}\n` +
         `At least ${Math.min(4, replaceTitles.length)} should be widely known with strong ratings or popularity. Avoid any of these titles: ${avoidList}. ` +
         `Context selections to consider:\n${contextLines}. Respond with JSON only, no markdown or code fences.`;
 
@@ -529,16 +654,73 @@ async function repairPopcornPopularity({
     }
 }
 
+async function repairMoodMovies({
+    curator,
+    selected,
+    replaceTitles,
+    bannedTitles,
+    moodRules,
+}: {
+    curator: CuratorPersona;
+    selected: CuratorSelection[];
+    replaceTitles: string[];
+    bannedTitles: string[];
+    moodRules: MoodRule[];
+}): Promise<AiRecommendedMovie[]> {
+    if (!replaceTitles.length || !moodRules.length) return [];
+
+    const avoidList = Array.from(new Set([...replaceTitles, ...bannedTitles].map(normalizeTitle)))
+        .slice(0, PREVIOUS_TITLES_MAX)
+        .join(', ');
+    const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
+    const moodRuleText = buildMoodRulesText(moodRules, curator.tasteBand);
+
+    const userPrompt =
+        `Your previous suggestions included movies that did not fit the mood. Replace ONLY these titles: ${replaceTitles.join(', ')}. ` +
+        `Return ONLY a JSON array of exactly ${replaceTitles.length} movies released between ${curator.minYear} and ${
+            curator.maxYear ?? CURRENT_YEAR
+        }. ` +
+        `${moodRuleText}\n` +
+        `Avoid any of these titles: ${avoidList}. Context selections:\n${contextLines}. Respond strictly with JSON.`;
+
+    const completion = await openai!.chat.completions.create({
+        model: OPENAI_MODEL,
+        temperature: 1,
+        messages: [
+            {
+                role: 'system',
+                content:
+                    'You are an AI movie curator. Respond only with JSON arrays of {"title": string, "release_year": number, "reason"?: string}.',
+            },
+            { role: 'user', content: userPrompt },
+        ],
+    });
+
+    const content = completion.choices?.[0]?.message?.content ?? '';
+    const sanitized = sanitizeJsonString(content);
+
+    try {
+        const parsed = JSON.parse(sanitized);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(normalizeMovie).filter(Boolean) as AiRecommendedMovie[];
+    } catch (error) {
+        console.error('Failed to repair mood-fit movies', error);
+        return [];
+    }
+}
+
 async function enforcePopcornBias({
     movies,
     curator,
     selected,
     previousTitles,
+    moodRules,
 }: {
     movies: AiRecommendedMovie[];
     curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
+    moodRules: MoodRule[];
 }): Promise<AiRecommendedMovie[]> {
     let workingList = [...movies];
 
@@ -562,6 +744,7 @@ async function enforcePopcornBias({
                 selected,
                 replaceTitles,
                 bannedTitles,
+                moodRules,
             });
 
             const baseList = workingList.filter(movie => !replaceTitles.includes(movie.title));
@@ -608,6 +791,7 @@ async function enforcePopcornBias({
         selected,
         replaceTitles,
         bannedTitles,
+        moodRules,
     });
 
     const baseList = workingList.filter(movie => !replaceTitles.includes(movie.title));
@@ -655,17 +839,24 @@ export async function POST(req: Request) {
     }
 
     const curator = CURATOR_PERSONAS.find(persona => persona.id === curatorId);
+    const activeMoodRules = getActiveMoodRules(selected.map(choice => choice.label));
 
     if (!curator) {
         return NextResponse.json({ message: 'Unknown curator persona.' }, { status: 404 });
     }
 
     try {
-        const initialContent = await requestCuratorBatch({ curator, selected, previousTitles });
+        const initialContent = await requestCuratorBatch({ curator, selected, previousTitles, moodRules: activeMoodRules });
         let { curator_note, primary, alternatives } = parseAiResponse(initialContent);
 
         if (!primary && alternatives.length === 0) {
-            const strictContent = await requestCuratorBatch({ curator, selected, previousTitles, strict: true });
+            const strictContent = await requestCuratorBatch({
+                curator,
+                selected,
+                previousTitles,
+                strict: true,
+                moodRules: activeMoodRules,
+            });
             ({ curator_note, primary, alternatives } = parseAiResponse(strictContent));
         }
 
@@ -690,7 +881,13 @@ export async function POST(req: Request) {
 
         if (curatedMovies.length < MOVIES_NUMBER_LIMIT) {
             const needed = MOVIES_NUMBER_LIMIT - curatedMovies.length;
-            const repairs = await repairMovies({ curator, selected, need: needed, bannedTitles });
+            const repairs = await repairMovies({
+                curator,
+                selected,
+                need: needed,
+                bannedTitles,
+                moodRules: activeMoodRules,
+            });
             const repairFiltered = repairs.filter(movie => isWithinYearRange(movie?.release_year, curator));
             const repairDeduped = repairFiltered.filter(movie => {
                 const key = normalizeTitle(movie.title);
@@ -717,7 +914,13 @@ export async function POST(req: Request) {
         if (enrichedList.length < MOVIES_NUMBER_LIMIT) {
             const need = MOVIES_NUMBER_LIMIT - enrichedList.length;
             bannedTitles = [...bannedTitles, ...enrichedList.map(movie => normalizeTitle(movie.title))];
-            const repairs = await repairMovies({ curator, selected, need, bannedTitles });
+            const repairs = await repairMovies({
+                curator,
+                selected,
+                need,
+                bannedTitles,
+                moodRules: activeMoodRules,
+            });
             const filteredRepairs = repairs
                 .filter(movie => isWithinYearRange(movie.release_year, curator))
                 .filter(movie => {
@@ -742,11 +945,60 @@ export async function POST(req: Request) {
                   curator,
                   selected,
                   previousTitles,
+                  moodRules: activeMoodRules,
               })
             : ([resolvedPrimary, ...fallbackAlternatives].filter(Boolean) as AiRecommendedMovie[]);
 
-        resolvedPrimary = tasteAdjustedList[0] ?? null;
-        fallbackAlternatives = tasteAdjustedList.slice(1);
+        let moodAdjustedList = tasteAdjustedList;
+        if (activeMoodRules.length) {
+            const { invalidTitles, passCount } = validateMoodFit(tasteAdjustedList, activeMoodRules);
+            const requiredPass = Math.min(5, tasteAdjustedList.length);
+            const shouldRepair = invalidTitles.length > 0 || passCount < requiredPass;
+
+            if (shouldRepair) {
+                const replaceCount = Math.min(
+                    MOVIES_NUMBER_LIMIT,
+                    Math.max(invalidTitles.length, Math.max(requiredPass - passCount, 1)),
+                );
+                const replaceTitles = invalidTitles.length
+                    ? invalidTitles
+                    : tasteAdjustedList.slice(-replaceCount).map(movie => movie.title);
+                const replaceSet = new Set(replaceTitles.map(normalizeTitle));
+                const baseList = tasteAdjustedList.filter(movie => !replaceSet.has(normalizeTitle(movie.title)));
+                const avoided = Array.from(new Set([...bannedTitles, ...Array.from(replaceSet)]));
+                const repairs = await repairMoodMovies({
+                    curator,
+                    selected,
+                    replaceTitles,
+                    bannedTitles: avoided,
+                    moodRules: activeMoodRules,
+                });
+                const filteredRepairs = repairs
+                    .filter(movie => isWithinYearRange(movie.release_year, curator))
+                    .filter(movie => {
+                        const key = normalizeTitle(movie.title);
+                        if (replaceSet.has(key)) return true;
+                        if (bannedTitles.includes(key)) return false;
+                        return true;
+                    })
+                    .slice(0, replaceCount);
+
+                const enrichedRepairs = await Promise.all(filteredRepairs.map(enrichMovie));
+                const validRepairs = enrichedRepairs.filter(Boolean) as AiRecommendedMovie[];
+                const seenMood = new Set(baseList.map(movie => normalizeTitle(movie.title)));
+                const dedupedRepairs = validRepairs.filter(movie => {
+                    const key = normalizeTitle(movie.title);
+                    if (seenMood.has(key)) return false;
+                    seenMood.add(key);
+                    return true;
+                });
+
+                moodAdjustedList = [...baseList, ...dedupedRepairs].slice(0, MOVIES_NUMBER_LIMIT);
+            }
+        }
+
+        resolvedPrimary = moodAdjustedList[0] ?? null;
+        fallbackAlternatives = moodAdjustedList.slice(1);
 
         const payload: CuratorRecommendationResponse = {
             curator: {

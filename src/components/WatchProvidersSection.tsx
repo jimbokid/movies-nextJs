@@ -3,8 +3,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { WatchLinksResponse } from '@/types/watchLinks';
 
 interface WatchProvidersSectionProps {
-    tmdbId: number;
+    tmdbId?: number;
     type: 'movie' | 'tv';
+    title: string;
+    originalTitle?: string;
+    releaseYear?: number;
 }
 
 function countryToFlag(code: string): string {
@@ -14,7 +17,7 @@ function countryToFlag(code: string): string {
         .replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
 }
 
-export function WatchProvidersSection({ tmdbId, type }: WatchProvidersSectionProps) {
+export function WatchProvidersSection({ tmdbId, type, title, originalTitle, releaseYear }: WatchProvidersSectionProps) {
     const [data, setData] = useState<WatchLinksResponse | null>(null);
     const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
 
@@ -23,10 +26,10 @@ export function WatchProvidersSection({ tmdbId, type }: WatchProvidersSectionPro
         const load = async () => {
             setStatus('loading');
             try {
-                const response = await fetch('/api/watch-links', {
+                const response = await fetch('/api/watch-links-ai', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tmdbId, type }),
+                    body: JSON.stringify({ tmdbId, type, title, originalTitle, releaseYear }),
                     signal: controller.signal,
                 });
 
@@ -46,12 +49,12 @@ export function WatchProvidersSection({ tmdbId, type }: WatchProvidersSectionPro
         void load();
 
         return () => controller.abort();
-    }, [tmdbId, type]);
+    }, [tmdbId, type, title, originalTitle, releaseYear]);
 
-    const platforms = useMemo(() => data?.platforms ?? [], [data]);
+    const links = useMemo(() => data?.links ?? [], [data]);
 
     const showSkeleton = status === 'loading' || status === 'idle';
-    const hasProviders = platforms.length > 0;
+    const hasProviders = links.length > 0;
 
     if (status === 'error' && !data) {
         return null;
@@ -88,17 +91,17 @@ export function WatchProvidersSection({ tmdbId, type }: WatchProvidersSectionPro
 
             {!showSkeleton && hasProviders && (
                 <div className="flex flex-wrap gap-3" role="list">
-                    {platforms.map(platform => (
+                    {links.map(link => (
                         <a
-                            key={platform.name}
-                            href={platform.url}
+                            key={link.provider}
+                            href={link.url}
                             target="_blank"
                             rel="noopener noreferrer nofollow"
-                            aria-label={`Open ${platform.name} in a new tab`}
+                            aria-label={`Open ${link.provider} in a new tab`}
                             className="rounded-xl border border-gray-800 bg-gray-800/60 px-4 py-3 text-sm font-medium text-gray-100 hover:border-gray-600 hover:bg-gray-800 transition"
                             role="listitem"
                         >
-                            {platform.name}
+                            {link.provider}
                         </a>
                     ))}
                 </div>
@@ -106,9 +109,13 @@ export function WatchProvidersSection({ tmdbId, type }: WatchProvidersSectionPro
 
             {!showSkeleton && !hasProviders && (
                 <div className="space-y-2">
-                    <p className="text-gray-300 text-sm">Streaming availability is limited in your region.</p>
+                    <p className="text-gray-300 text-sm">No streaming links found for your region yet.</p>
                     {data?.note && <p className="text-gray-400 text-sm">{data.note}</p>}
                 </div>
+            )}
+
+            {!showSkeleton && hasProviders && data?.note && (
+                <p className="text-gray-400 text-sm mt-3">{data.note}</p>
             )}
         </section>
     );

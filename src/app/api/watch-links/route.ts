@@ -169,14 +169,14 @@ export async function POST(req: Request) {
     const country = getUserCountry(req);
     const body = (await req.json().catch(() => null)) as WatchLinksRequest | null;
 
-    if (!body || typeof body.tmdbId !== 'number' || !['movie', 'tv'].includes(body.type)) {
+    if (!body || typeof body.tmdbId !== 'number' || !['movie', 'tv'].includes(body.type) || !body.title) {
         return NextResponse.json({ message: 'Invalid request body.' }, { status: 400 });
     }
 
     let platforms: WatchPlatformLink[] = [];
     let note: string | undefined;
 
-    let title = 'this title';
+    let title = body.title ?? 'this title';
     try {
         title = (await fetchTitle(body.tmdbId, body.type)) || title;
     } catch (error) {
@@ -196,7 +196,7 @@ export async function POST(req: Request) {
                 .map(name => {
                     const builder = PLATFORM_SEARCH_BUILDERS[name];
                     if (!builder) return null;
-                    return { name, url: builder(query) } satisfies WatchPlatformLink;
+                    return { provider: name, url: builder(query) } satisfies WatchPlatformLink;
                 })
                 .filter((value): value is WatchPlatformLink => Boolean(value));
         }
@@ -210,7 +210,8 @@ export async function POST(req: Request) {
 
     const payload: WatchLinksResponse = {
         country,
-        platforms,
+        updatedAt: new Date().toISOString(),
+        links: platforms,
         note,
     };
 

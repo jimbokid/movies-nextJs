@@ -120,6 +120,9 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                 <WatchProvidersSection
                     tmdbId={Number(id)}
                     type={type === 'tv' ? 'tv' : 'movie'}
+                    title={movie.title || movie.name || ''}
+                    originalTitle={(movie as { original_title?: string }).original_title ?? movie.original_name}
+                    releaseYear={movie.release_date ? new Date(movie.release_date).getFullYear() : movie.first_air_date ? new Date(movie.first_air_date).getFullYear() : undefined}
                 />
 
                 {data.keywords && data.keywords.length > 0 && (

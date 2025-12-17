@@ -1,15 +1,19 @@
 export interface WatchLinksRequest {
-    tmdbId: number;
     type: 'movie' | 'tv';
+    title: string;
+    originalTitle?: string;
+    releaseYear?: number;
+    tmdbId?: number;
 }
 
 export interface WatchPlatformLink {
-    name: string;
+    provider: string;
     url: string;
 }
 
 export interface WatchLinksResponse {
     country: string;
-    platforms: WatchPlatformLink[];
+    updatedAt: string;
+    links: WatchPlatformLink[];
     note?: string;
 }

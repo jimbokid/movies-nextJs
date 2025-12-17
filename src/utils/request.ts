@@ -1,4 +1,6 @@
-const DEFAULT_COUNTRY = (process.env.TMDB_REGION ?? process.env.DEFAULT_COUNTRY ?? 'US').toUpperCase();
+export type CountryCode = 'US' | 'UA' | 'DE' | 'PL' | string;
+
+const DEFAULT_COUNTRY: CountryCode = (process.env.TMDB_REGION ?? process.env.DEFAULT_COUNTRY ?? 'US').toUpperCase();
 
 function normalizeCountryCode(value?: string | null): string | null {
     if (!value) return null;
@@ -13,7 +15,7 @@ function normalizeCountryCode(value?: string | null): string | null {
     return code && /^[A-Z]{2}$/.test(code) ? code : null;
 }
 
-export function getUserCountry(req: Request): string {
+export function getUserCountry(req: Request): CountryCode {
     const headerCountry = normalizeCountryCode(req.headers.get('x-vercel-ip-country'));
     if (headerCountry) return headerCountry;
 

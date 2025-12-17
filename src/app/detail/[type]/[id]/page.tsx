@@ -2,8 +2,9 @@ import Image from 'next/image';
 import { MovieDetail } from '@/services/movie';
 import { MovieDetailPayload } from '@/types/movie';
 import Link from 'next/link';
-import MovieCard from '@/components/MovieCard';
 import { Metadata } from 'next';
+import MovieCard from '@/components/MovieCard';
+import WatchProvidersSection from '@/components/WatchProvidersSection';
 
 interface MovieDetailPageProps {
     params: Promise<{
@@ -115,6 +116,12 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                     <h2 className="text-2xl font-semibold mb-3">Overview</h2>
                     <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
                 </div>
+
+                <WatchProvidersSection
+                    tmdbId={Number(id)}
+                    type={type === 'tv' ? 'tv' : 'movie'}
+                    title={movie.title || movie.original_name}
+                />
 
                 {data.keywords && data.keywords.length > 0 && (
                     <div className="mb-8">

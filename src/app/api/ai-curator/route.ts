@@ -216,7 +216,6 @@ function normalizeMovie(item: unknown): AiRecommendedMovie | null {
 }
 
 function parseAiResponse(content: string): {
-    curator_note: string;
     primary: AiRecommendedMovie | null;
     alternatives: AiRecommendedMovie[];
 } {
@@ -235,11 +234,11 @@ function parseAiResponse(content: string): {
         };
 
         if (Array.isArray(parsed)) {
-            return { curator_note: '', ...curateFromList(parsed) };
+            return {  ...curateFromList(parsed) };
         }
 
         if (!isRecord(parsed)) {
-            return { curator_note: '', primary: null, alternatives: [] };
+            return {  primary: null, alternatives: [] };
         }
 
         const primary = normalizeMovie(parsed.primary) ?? null;
@@ -254,21 +253,19 @@ function parseAiResponse(content: string): {
             .filter(Boolean)
             .slice(0, ALTERNATIVE_TARGET_MAX) as AiRecommendedMovie[];
 
-        const curatorNote = typeof parsed.curator_note === 'string' ? parsed.curator_note : '';
 
         if (!primary && Array.isArray(parsed)) {
             const fromArray = curateFromList(parsed as unknown[]);
-            return { curator_note: curatorNote, ...fromArray };
+            return {  ...fromArray };
         }
 
         return {
-            curator_note: curatorNote,
             primary,
             alternatives,
         };
     } catch (error) {
         console.error('Failed to parse AI curator response', error);
-        return { curator_note: '', primary: null, alternatives: [] };
+        return {  primary: null, alternatives: [] };
     }
 }
 
@@ -452,10 +449,9 @@ function buildPrompt({
         `Avoid repeating classic canon defaults every session (e.g., Fight Club, Shawshank, Inception) and avoid ultra-niche or hard-to-find titles. ` +
         `Prefer movies with strong TMDB presence and widely available/streamable options when possible. ` +
         `IMPORTANT OUTPUT RULES:\n` +
-        `- "curator_note" MUST be 1–2 short sentences ONLY (max 25 words total).\n` +
         `- Do NOT add explanations outside JSON.\n` +
         `- Do NOT exceed sentence limits.\n\n` +
-        `Return JSON with fields: {"curator_note": string, "primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year": number, "reason"?: string}. ` +
+        `Return JSON with fields: {"primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year": number, "reason"?: string}. ` +
         `Ensure at least ${ALTERNATIVE_TARGET_MIN} and at most ${ALTERNATIVE_TARGET_MAX} alternatives and exactly ${PRIMARY_TARGET} primary pick. ` +
         `Include at least one unconventional choice within mainstream/recognizable bounds, prefer diversity by decade and country when relevant, and penalize repeats from prior sessions. ` +
         `If unsure, choose the more mainstream option. Respond with raw JSON only—no markdown, no commentary.${strict ? ' Output strictly valid JSON.' : ''}`
@@ -853,7 +849,7 @@ export async function POST(req: Request) {
 
     try {
         const initialContent = await requestCuratorBatch({ curator, selected, previousTitles, moodRules: activeMoodRules });
-        let { curator_note, primary, alternatives } = parseAiResponse(initialContent);
+        let {  primary, alternatives } = parseAiResponse(initialContent);
 
         if (!primary && alternatives.length === 0) {
             const strictContent = await requestCuratorBatch({
@@ -863,7 +859,7 @@ export async function POST(req: Request) {
                 strict: true,
                 moodRules: activeMoodRules,
             });
-            ({ curator_note, primary, alternatives } = parseAiResponse(strictContent));
+            ({ primary, alternatives } = parseAiResponse(strictContent));
         }
 
         const combined: AiRecommendedMovie[] = [];
@@ -1012,11 +1008,6 @@ export async function POST(req: Request) {
                 name: curator.name,
                 emoji: curator.emoji,
             },
-            curator_note:
-                curator_note ||
-                (fallbackAlternatives.length + (resolvedPrimary ? 1 : 0) >= ALTERNATIVE_TARGET_MIN
-                    ? 'Here is what I would line up for you tonight.'
-                    : "Couldn't find enough modern matches—try different moods."),
             primary: resolvedPrimary,
             alternatives: fallbackAlternatives,
         };

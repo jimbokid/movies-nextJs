@@ -683,16 +683,6 @@ export default function CuratorPage() {
 
                             {result && (
                                 <div className="space-y-6">
-                                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-transparent to-white/5 p-4">
-                                        <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
-                                            {result.curator.emoji} {result.curator.name} says
-                                        </p>
-                                        <p className="mt-2 text-lg text-white leading-relaxed">
-                                            {result.curator_note ||
-                                                'Here is what I would line up for you tonight.'}
-                                        </p>
-                                    </div>
-
                                     <div className="grid gap-4 md:grid-cols-3">
                                         <div className="md:col-span-2">
                                             {primaryPick ? (

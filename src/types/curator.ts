@@ -34,7 +34,6 @@ export interface CuratorSummary {
 
 export interface CuratorRecommendationResponse {
     curator: CuratorSummary;
-    curator_note: string;
     primary: AiRecommendedMovie | null;
     alternatives: AiRecommendedMovie[];
 }

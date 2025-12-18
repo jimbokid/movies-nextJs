@@ -6,6 +6,7 @@ type WatchLinksRequest = {
     type: 'movie' | 'tv';
     title: string;
     year?: number;
+    country?: string;
 };
 
 type WatchLink = { provider: string; url: string };
@@ -27,7 +28,7 @@ const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 const cache = new Map<string, CacheEntry>();
 
 function cacheKeyFromRequest(body: WatchLinksRequest): string {
-    return `${body.type}:${body.title.toLowerCase().trim()}:${body.year ?? ''}`;
+    return `${body.type}:${body.title.toLowerCase().trim()}:${body.year ?? ''}:${body.country ?? 'US'}`;
 }
 
 function isAllowedHost(provider: string, host: string): boolean {
@@ -110,6 +111,7 @@ function parseAiResponse(content: string): { links: WatchLink[]; note?: string }
 
 function buildPrompt(body: WatchLinksRequest): string {
     const yearText = Number.isFinite(body.year) ? body.year : 'unknown';
+    const country = body.country ?? 'US';
 
     return `You are a streaming link assistant.
 
@@ -119,12 +121,14 @@ Rules:
 - Use ONLY official streaming providers.
 - Do NOT include piracy/unofficial sites.
 - If unsure about a direct title link, omit that provider.
+- Only include providers available in ${country}. Omit providers if availability is uncertain.
 - Output ONLY valid JSON (no markdown, no code fences).
 
 Input:
 Type: ${body.type}
 Title: "${body.title}"
 Year: ${yearText}
+Country: ${country}
 
 Output JSON schema:
 {
@@ -151,6 +155,25 @@ function setCache(key: string, value: WatchLinksResponse) {
     cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
 }
 
+function normalizeCountry(input?: string | null): string | undefined {
+    if (!input) return undefined;
+    const trimmed = input.trim();
+    if (!trimmed) return undefined;
+
+    const match = trimmed.match(/[A-Za-z]{2}/);
+    if (!match) return undefined;
+
+    return match[0].toUpperCase();
+}
+
+function resolveCountry(req: Request, requestedCountry?: string): string {
+    const headerCountry =
+        normalizeCountry(req.headers.get('x-vercel-ip-country')) ??
+        normalizeCountry(req.headers.get('cf-ipcountry'));
+
+    return headerCountry ?? normalizeCountry(requestedCountry) ?? 'US';
+}
+
 export async function POST(req: Request) {
     if (!process.env.OPENAI_API_KEY || !openai) {
         return NextResponse.json({ message: 'Missing OpenAI API key.' }, { status: 500 });
@@ -166,6 +189,7 @@ export async function POST(req: Request) {
         type: body.type,
         title: body.title.trim(),
         year: typeof body.year === 'number' ? body.year : undefined,
+        country: resolveCountry(req, body.country),
     };
 
     const cacheKey = cacheKeyFromRequest(normalizedBody);

@@ -20,14 +20,46 @@ export default function WatchLinks({ type, title, year }: WatchLinksProps) {
     const [data, setData] = useState<WatchLinksResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [country, setCountry] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+        function extractCountry(locales: string[]): string | undefined {
+            for (const locale of locales) {
+                const match = locale.match(/[-_](\w{2})/);
+                if (match?.[1]) {
+                    return match[1].toUpperCase();
+                }
+                if (locale.length === 2) {
+                    return locale.toUpperCase();
+                }
+            }
+            return undefined;
+        }
+
+        if (typeof navigator === 'undefined') return;
+
+        const locales = Array.isArray(navigator.languages)
+            ? navigator.languages
+            : [];
+
+        const resolvedCountry = extractCountry([
+            ...locales,
+            navigator.language,
+        ].filter(Boolean) as string[]);
+
+        if (resolvedCountry) {
+            setCountry(resolvedCountry);
+        }
+    }, []);
 
     const requestBody = useMemo(
         () => ({
             type,
             title: title.trim(),
             year,
+            country,
         }),
-        [type, title, year],
+        [type, title, year, country],
     );
 
     useEffect(() => {

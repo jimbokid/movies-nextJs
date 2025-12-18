@@ -8,4 +8,6 @@ export const PROVIDERS: Record<string, string[]> = {
     'Paramount+': ['paramountplus.com'],
     Peacock: ['peacocktv.com'],
     MUBI: ['mubi.com'],
+    MEGOGO: ['megogo.net', 'megogo.ua'],
+    'Kyivstar TV': ['tv.kyivstar.ua', 'kyivstar.ua'],
 };

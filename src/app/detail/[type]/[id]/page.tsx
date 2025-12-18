@@ -4,6 +4,7 @@ import { MovieDetailPayload } from '@/types/movie';
 import Link from 'next/link';
 import MovieCard from '@/components/MovieCard';
 import { Metadata } from 'next';
+import WatchLinks from '@/components/WatchLinks';
 
 interface MovieDetailPageProps {
     params: Promise<{
@@ -57,6 +58,12 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     const data: MovieDetailPayload = await MovieDetail.getMovieDetail(id, type);
 
     const movie = data.data;
+    const watchType: 'movie' | 'tv' = type === 'tv' ? 'tv' : 'movie';
+    const releaseYear = movie.release_date
+        ? Number.parseInt(movie.release_date.slice(0, 4), 10)
+        : movie.first_air_date
+          ? Number.parseInt(movie.first_air_date.slice(0, 4), 10)
+          : undefined;
 
     return (
         <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-gray-100">
@@ -114,6 +121,14 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                 <div className="mb-10">
                     <h2 className="text-2xl font-semibold mb-3">Overview</h2>
                     <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
+                </div>
+
+                <div className="mb-10">
+                    <WatchLinks
+                        type={watchType}
+                        title={movie.title || movie.original_name}
+                        year={Number.isFinite(releaseYear) ? releaseYear : undefined}
+                    />
                 </div>
 
                 {data.keywords && data.keywords.length > 0 && (

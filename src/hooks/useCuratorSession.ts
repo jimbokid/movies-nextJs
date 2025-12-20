@@ -50,7 +50,7 @@ const buildSelectedBadges = (
 };
 
 const getPersonaById = (id: CuratorId | null): CuratorPersona | null =>
-    id ? CURATOR_PERSONAS.find(curator => curator.id === id) ?? null : null;
+    id ? (CURATOR_PERSONAS.find(curator => curator.id === id) ?? null) : null;
 
 export function useCuratorSession() {
     const [step, setStep] = useState<CuratorStep>(1);
@@ -70,10 +70,17 @@ export function useCuratorSession() {
     const [loading, setLoading] = useState(false);
     const [loadingLineIndex, setLoadingLineIndex] = useState(0);
     const [status, setStatus] = useState<SessionStatus>('idle');
-    const [swapTarget, setSwapTarget] = useState<{ role: 'primary' | 'alternative'; index?: number } | null>(null);
+    const [swapTarget, setSwapTarget] = useState<{
+        role: 'primary' | 'alternative';
+        index?: number;
+    } | null>(null);
     const [rejectedTitles, setRejectedTitles] = useState<string[]>([]);
     const [swappedTitles, setSwappedTitles] = useState<string[]>([]);
-    const [moodDrift, setMoodDrift] = useState<{ funSerious: number; mainstreamIndie: number; safeBold: number }>({
+    const [moodDrift, setMoodDrift] = useState<{
+        funSerious: number;
+        mainstreamIndie: number;
+        safeBold: number;
+    }>({
         funSerious: 0,
         mainstreamIndie: 0,
         safeBold: 0,
@@ -145,21 +152,18 @@ export function useCuratorSession() {
         return Array.from(titles).slice(-PREVIOUS_TITLES_CAP);
     }, [sessions]);
 
-    const resetCuratorResults = useCallback(
-        (opts?: { preserveRefine?: boolean }) => {
-            setResult(null);
-            setStatus('idle');
-            setLineupPrimary(null);
-            setLineupAlternatives([]);
-            setSwapTarget(null);
-            setRejectedTitles([]);
-            setSwappedTitles([]);
-            if (!opts?.preserveRefine) {
-                setRefinePreset(undefined);
-            }
-        },
-        [],
-    );
+    const resetCuratorResults = useCallback((opts?: { preserveRefine?: boolean }) => {
+        setResult(null);
+        setStatus('idle');
+        setLineupPrimary(null);
+        setLineupAlternatives([]);
+        setSwapTarget(null);
+        setRejectedTitles([]);
+        setSwappedTitles([]);
+        if (!opts?.preserveRefine) {
+            setRefinePreset(undefined);
+        }
+    }, []);
 
     const handleSelectCurator = (curatorId: CuratorId) => {
         setSelectedCuratorId(curatorId);
@@ -192,29 +196,28 @@ export function useCuratorSession() {
     const toCuratedPick = (movie: AiRecommendedMovie | null, locked = false): CuratedPick =>
         movie ? { ...movie, locked, expanded: false } : null;
 
-    const applyFreshResult = useCallback(
-        (data: CuratorRecommendationResponse) => {
-            setResult(data);
-            const primaryPick = toCuratedPick(data.primary);
-            const altPicks = data.alternatives.map(item => toCuratedPick(item)).filter(Boolean) as CuratedPick[];
-            setLineupPrimary(primaryPick);
-            setLineupAlternatives(altPicks.slice(0, 6));
-        },
-        [],
-    );
+    const applyFreshResult = useCallback((data: CuratorRecommendationResponse) => {
+        setResult(data);
+        const primaryPick = toCuratedPick(data.primary);
+        const altPicks = data.alternatives
+            .map(item => toCuratedPick(item))
+            .filter(Boolean) as CuratedPick[];
+        setLineupPrimary(primaryPick);
+        setLineupAlternatives(altPicks.slice(0, 6));
+    }, []);
 
     const mergeResultRespectingLocks = useCallback(
         (data: CuratorRecommendationResponse) => {
             setResult(data);
             const incomingPrimary = toCuratedPick(data.primary);
-            const incomingAlts = data.alternatives.map(item => toCuratedPick(item)).filter(Boolean) as CuratedPick[];
+            const incomingAlts = data.alternatives
+                .map(item => toCuratedPick(item))
+                .filter(Boolean) as CuratedPick[];
             const lockedPrimary = lineupPrimary?.locked ? lineupPrimary : null;
             const primaryPick = lockedPrimary ?? incomingPrimary;
 
             const lockedAlts = lineupAlternatives.filter(pick => pick?.locked);
-            const lockedTitles = lockedAlts
-                .map(item => item?.title)
-                .filter(Boolean) as string[];
+            const lockedTitles = lockedAlts.map(item => item?.title).filter(Boolean) as string[];
             const seen = new Set<string>([
                 ...(primaryPick?.title ? [primaryPick.title] : []),
                 ...lockedTitles,
@@ -241,12 +244,12 @@ export function useCuratorSession() {
         }
     };
 
-    const collectCurrentTitles = () => {
+    const collectCurrentTitles = useCallback(() => {
         const titles: string[] = [];
         if (lineupPrimary?.title) titles.push(lineupPrimary.title);
         lineupAlternatives.forEach(item => item?.title && titles.push(item.title));
         return titles;
-    };
+    }, [lineupAlternatives, lineupPrimary?.title]);
 
     const startSession = useCallback(
         async (preset?: RefinePreset) => {
@@ -318,18 +321,22 @@ export function useCuratorSession() {
             }
         },
         [
-            applyFreshResult,
-            buildPreviousTitles,
-            canStartSession,
-            contextSelections,
-            curatedSelections,
-            moodDrift,
-            refinePreset,
-            rejectedTitles,
-            resetCuratorResults,
             selectedCurator,
-            toggleSelections,
+            canStartSession,
+            refinePreset,
+            resetCuratorResults,
+            curatedSelections,
+            buildPreviousTitles,
+            collectCurrentTitles,
+            rejectedTitles,
             swappedTitles,
+            moodDrift,
+            lineupPrimary?.locked,
+            lineupAlternatives,
+            mergeResultRespectingLocks,
+            applyFreshResult,
+            contextSelections,
+            toggleSelections,
         ],
     );
 
@@ -380,7 +387,7 @@ export function useCuratorSession() {
     };
 
     const handleSwap = async (role: 'primary' | 'alternative', index = 0) => {
-        const target = role === 'primary' ? lineupPrimary : lineupAlternatives[index] ?? null;
+        const target = role === 'primary' ? lineupPrimary : (lineupAlternatives[index] ?? null);
         if (!selectedCurator || !target || target.locked) return;
 
         setSwapTarget({ role, index });
@@ -395,7 +402,8 @@ export function useCuratorSession() {
                     previousTitles: buildPreviousTitles(),
                     lockedTitles: collectCurrentTitles().filter(title => {
                         if (role === 'primary' && lineupPrimary?.title === title) return false;
-                        if (role === 'alternative' && lineupAlternatives[index]?.title === title) return false;
+                        if (role === 'alternative' && lineupAlternatives[index]?.title === title)
+                            return false;
                         return true;
                     }),
                     rejectedTitles,
@@ -413,10 +421,14 @@ export function useCuratorSession() {
             if (replacement) {
                 const newPick: CuratedPick = { ...replacement, locked: false, expanded: false };
                 if (role === 'primary') {
-                    setRejectedTitles(prev => [...prev, lineupPrimary?.title ?? ''].filter(Boolean));
+                    setRejectedTitles(prev =>
+                        [...prev, lineupPrimary?.title ?? ''].filter(Boolean),
+                    );
                     setLineupPrimary(newPick);
                 } else {
-                    setRejectedTitles(prev => [...prev, lineupAlternatives[index]?.title ?? ''].filter(Boolean));
+                    setRejectedTitles(prev =>
+                        [...prev, lineupAlternatives[index]?.title ?? ''].filter(Boolean),
+                    );
                     setLineupAlternatives(prev => {
                         const next = [...prev];
                         next[index] = newPick;

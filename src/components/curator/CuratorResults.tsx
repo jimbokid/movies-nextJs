@@ -8,7 +8,7 @@ import CuratorLoading, { CuratorLoadingMode } from './CuratorLoading';
 
 interface CuratorResultsProps {
     result: CuratorRecommendationResponse | null;
-    loading: boolean;
+    status: 'idle' | 'loading' | 'ready' | 'error';
     onRefine: (preset: RefinePreset) => void;
     activePreset?: RefinePreset;
     onEdit: () => void;
@@ -85,9 +85,7 @@ function MovieCard({
                     ) : null}
                 </div>
                 <h4 className="text-lg font-semibold text-white">{title}</h4>
-                {reason && (
-                    <p className="text-sm text-gray-200 leading-relaxed line-clamp-2">{reason}</p>
-                )}
+                {reason && <p className="text-sm text-gray-200 leading-relaxed line-clamp-2">{reason}</p>}
             </div>
         </div>
     );
@@ -106,7 +104,7 @@ function MovieCard({
 
 export default function CuratorResults({
     result,
-    loading,
+    status,
     onRefine,
     activePreset,
     onEdit,
@@ -133,7 +131,7 @@ export default function CuratorResults({
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {hasResults && !loading && (
+                    {hasResults && status === 'ready' && (
                         <>
                             <button
                                 type="button"
@@ -154,25 +152,8 @@ export default function CuratorResults({
                 </div>
             </div>
 
-            <div className="relative min-h-[560px]">
-                {loading && (
-                    <CuratorLoading
-                        mode={mode}
-                        message={loadingMessage}
-                        curatorEmoji={curatorEmoji}
-                        curatorName={curatorName}
-                        thinkingLines={thinkingLines}
-                    />
-                )}
-
-                {!result && !loading && (
-                    <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-gray-300">
-                        <div className="h-40 w-full max-w-md rounded-2xl border border-dashed border-white/10 bg-white/5" />
-                        <p className="text-sm">Kick off a session to see a curated lineup.</p>
-                    </div>
-                )}
-
-                {result && (
+            <div className="relative min-h-[560px] overflow-hidden">
+                {status === 'ready' && result && (
                     <div className="space-y-6">
                         {curatorNote && (
                             <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-purple-500/10 to-white/5 p-4 text-sm text-gray-100">
@@ -263,6 +244,29 @@ export default function CuratorResults({
                             )}
                         </div>
                     </div>
+                )}
+
+                {status === 'error' && (
+                    <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+                        <p className="text-sm text-amber-200">Something went wrong. Try again.</p>
+                        <button
+                            type="button"
+                            onClick={() => onRefine(activePreset ?? 'surprise')}
+                            className="rounded-full border border-white/10 px-4 py-2 text-xs text-white hover:border-purple-300/60"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                )}
+
+                {status === 'loading' && (
+                    <CuratorLoading
+                        mode={mode}
+                        message={loadingMessage}
+                        curatorEmoji={curatorEmoji}
+                        curatorName={curatorName}
+                        thinkingLines={thinkingLines}
+                    />
                 )}
             </div>
         </div>

@@ -17,6 +17,7 @@ import { readLocalStorage, writeLocalStorage } from '@/utils/storage';
 const AI_CURATOR_ENDPOINT = '/api/ai-curator';
 const SESSION_STORAGE_KEY = 'cineview.curator.sessions.v1';
 const PREVIOUS_TITLES_CAP = 20;
+type SessionStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export type CuratorStep = 1 | 2 | 3 | 4;
 
@@ -65,7 +66,7 @@ export function useCuratorSession() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [loadingLineIndex, setLoadingLineIndex] = useState(0);
-    const [keepPrevious, setKeepPrevious] = useState(false);
+    const [status, setStatus] = useState<SessionStatus>('idle');
     const [historyOpen, setHistoryOpen] = useState(false);
     const resultsRef = useRef<HTMLDivElement | null>(null);
     const controllerRef = useRef<AbortController | null>(null);
@@ -98,10 +99,10 @@ export function useCuratorSession() {
     }, [loading, selectedCuratorId]);
 
     useEffect(() => {
-        if (result && step === 4 && resultsRef.current) {
+        if (status === 'ready' && resultsRef.current) {
             resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    }, [result, step]);
+    }, [status]);
 
     const selectedCurator = useMemo(() => getPersonaById(selectedCuratorId), [selectedCuratorId]);
 
@@ -123,21 +124,25 @@ export function useCuratorSession() {
     const canProceedToSummary = Boolean(selectedCurator);
     const canStartSession = step >= 3 && Boolean(selectedCurator);
 
-    const buildPreviousTitles = useCallback(
-        (existing?: CuratorRecommendationResponse | null) => {
-            const titles = new Set<string>();
-            sessions.forEach(session => {
-                const { primary, alternatives } = session.result;
-                if (primary?.title) titles.add(primary.title);
-                alternatives.forEach(item => item.title && titles.add(item.title));
-            });
-            if (existing) {
-                existing.primary?.title && titles.add(existing.primary.title);
-                existing.alternatives.forEach(item => titles.add(item.title));
+    const buildPreviousTitles = useCallback(() => {
+        const titles = new Set<string>();
+        sessions.forEach(session => {
+            const { primary, alternatives } = session.result;
+            if (primary?.title) titles.add(primary.title);
+            alternatives.forEach(item => item.title && titles.add(item.title));
+        });
+        return Array.from(titles).slice(-PREVIOUS_TITLES_CAP);
+    }, [sessions]);
+
+    const resetCuratorResults = useCallback(
+        (opts?: { preserveRefine?: boolean }) => {
+            setResult(null);
+            setStatus('idle');
+            if (!opts?.preserveRefine) {
+                setRefinePreset(undefined);
             }
-            return Array.from(titles).slice(-PREVIOUS_TITLES_CAP);
         },
-        [sessions],
+        [],
     );
 
     const handleSelectCurator = (curatorId: CuratorId) => {
@@ -150,25 +155,23 @@ export function useCuratorSession() {
 
     const handleSelectContext = (groupId: string, option: CuratorContextOption) => {
         setContextSelections(prev => ({ ...prev, [groupId]: option }));
-        setResult(null);
+        resetCuratorResults();
         setError(null);
     };
 
     const handleToggle = (toggleId: string) => {
         setToggleSelections(prev => ({ ...prev, [toggleId]: !prev[toggleId] }));
-        setResult(null);
+        resetCuratorResults();
         setError(null);
     };
 
     const resetContext = useCallback(() => {
         setContextSelections(buildDefaultContext());
         setToggleSelections(buildDefaultToggles());
-        setResult(null);
+        resetCuratorResults();
         setError(null);
-        setRefinePreset(undefined);
-        setKeepPrevious(false);
         setStep(selectedCuratorId ? 2 : 1);
-    }, [selectedCuratorId]);
+    }, [resetCuratorResults, selectedCuratorId]);
 
     const cancelInFlight = () => {
         if (controllerRef.current) {
@@ -186,11 +189,11 @@ export function useCuratorSession() {
             const usePreset = preset ?? refinePreset;
 
             try {
+                resetCuratorResults({ preserveRefine: true });
                 setLoading(true);
+                setStatus('loading');
                 setError(null);
-                if (!keepPrevious) {
-                    setResult(null);
-                }
+                setRefinePreset(usePreset);
                 setStep(4);
 
                 const response = await fetch(AI_CURATOR_ENDPOINT, {
@@ -200,7 +203,7 @@ export function useCuratorSession() {
                         curatorId: selectedCurator.id,
                         selected: curatedSelections,
                         refinePreset: usePreset,
-                        previousTitles: buildPreviousTitles(keepPrevious ? result : null),
+                        previousTitles: buildPreviousTitles(),
                     }),
                     signal: controller.signal,
                 });
@@ -212,7 +215,7 @@ export function useCuratorSession() {
 
                 const data: CuratorRecommendationResponse = await response.json();
                 setResult(data);
-                setRefinePreset(usePreset);
+                setStatus('ready');
 
                 setSessions(prev => {
                     const newSession: CuratorSession = {
@@ -230,6 +233,7 @@ export function useCuratorSession() {
                 });
             } catch (err) {
                 if ((err as Error).name === 'AbortError') return;
+                setStatus('error');
                 setError(err instanceof Error ? err.message : 'Something went wrong.');
             } finally {
                 setLoading(false);
@@ -240,9 +244,8 @@ export function useCuratorSession() {
             canStartSession,
             contextSelections,
             curatedSelections,
-            keepPrevious,
             refinePreset,
-            result,
+            resetCuratorResults,
             selectedCurator,
             toggleSelections,
         ],
@@ -251,7 +254,7 @@ export function useCuratorSession() {
     const goBackToCurator = () => {
         cancelInFlight();
         setStep(1);
-        setResult(null);
+        resetCuratorResults();
         setError(null);
     };
 
@@ -264,6 +267,7 @@ export function useCuratorSession() {
     const goToContext = () => {
         if (canProceedToContext) {
             setStep(2);
+            resetCuratorResults();
         }
     };
 
@@ -276,6 +280,7 @@ export function useCuratorSession() {
         setSelectedCuratorId(session.curatorId);
         setRefinePreset(session.refinePreset);
         setResult(session.result);
+        setStatus('ready');
         setStep(4);
         setHistoryOpen(false);
     };
@@ -285,16 +290,13 @@ export function useCuratorSession() {
         if (!session) return;
         setSelectedCuratorId(session.curatorId);
         setStep(2);
-        setResult(null);
-        setRefinePreset(undefined);
+        resetCuratorResults();
         setHistoryOpen(false);
     };
 
     const newSession = () => {
         cancelInFlight();
-        setResult(null);
-        setRefinePreset(undefined);
-        setKeepPrevious(false);
+        resetCuratorResults();
         setStep(selectedCuratorId ? 2 : 1);
     };
 
@@ -326,6 +328,7 @@ export function useCuratorSession() {
         result,
         loading,
         loadingMessage: loadingLine,
+        status,
         error,
         contextGroups: CONTEXT_GROUPS,
         contextToggles: CONTEXT_TOGGLES,
@@ -339,8 +342,6 @@ export function useCuratorSession() {
         historyOpen,
         loadSessionFromHistory,
         startNewFromHistory,
-        keepPrevious,
-        setKeepPrevious,
     };
 }
 

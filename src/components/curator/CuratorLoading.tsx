@@ -13,16 +13,6 @@ export interface CuratorLoadingProps {
     thinkingLines?: string[];
 }
 
-const shimmerBase =
-    'relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_12px_50px_rgba(0,0,0,0.3)]';
-
-const ShimmerBlock = ({ className }: { className?: string }) => (
-    <div className={`${shimmerBase} ${className ?? ''}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5" />
-        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-    </div>
-);
-
 export default function CuratorLoading({
     message,
     mode = 'overlay',
@@ -31,10 +21,7 @@ export default function CuratorLoading({
     thinkingLines = [],
 }: CuratorLoadingProps) {
     const [lineIndex, setLineIndex] = useState(0);
-    const containerClasses =
-        mode === 'overlay'
-            ? 'absolute inset-0 z-30'
-            : 'relative w-full min-h-[520px]';
+    const containerClasses = mode === 'overlay' ? 'absolute inset-0 z-30' : 'relative w-full min-h-[520px]';
 
     useEffect(() => {
         if (!thinkingLines.length) return undefined;
@@ -77,30 +64,40 @@ export default function CuratorLoading({
 
                 <div className="flex items-center gap-2 text-sm text-gray-200">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                    <p className="line-clamp-2">
-                        {thinkingLine || 'Choosing a hero pick and bold alternatives...'}
-                    </p>
+                    <p className="line-clamp-2">{thinkingLine || 'Choosing a hero pick and bold alternatives...'}</p>
                 </div>
 
-                <div className="grid flex-1 gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-3">
                     <div className="md:col-span-2">
-                        <ShimmerBlock className="h-full min-h-[360px]">
-                            <div className="aspect-[2/3]" />
-                        </ShimmerBlock>
+                        <div className="relative h-[420px] w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 md:h-[520px]">
+                            <div className="absolute inset-0 shimmer-surface" />
+                        </div>
                     </div>
                     <div className="space-y-3">
-                        <ShimmerBlock className="min-h-[100px]" />
-                        <ShimmerBlock className="min-h-[100px]" />
-                        <ShimmerBlock className="min-h-[100px]" />
+                        {Array.from({ length: 6 }).map((_, idx) => (
+                            <div
+                                key={idx}
+                                className="h-12 rounded-xl border border-white/10 bg-white/5 shimmer-surface"
+                            />
+                        ))}
                     </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3">
-                    {Array.from({ length: 3 }).map((_, idx) => (
-                        <div key={idx} className="space-y-3">
-                            <ShimmerBlock className="min-h-[200px]" />
-                        </div>
-                    ))}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs uppercase tracking-[0.18em] text-purple-200/80">Alternatives</span>
+                        <span className="h-px w-12 bg-white/10" />
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {Array.from({ length: 3 }).map((_, idx) => (
+                            <div
+                                key={idx}
+                                className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-white/10 bg-white/5"
+                            >
+                                <div className="absolute inset-0 shimmer-surface" />
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </motion.div>

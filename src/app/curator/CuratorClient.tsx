@@ -193,6 +193,7 @@ export default function CuratorClient() {
         result,
         loading,
         loadingMessage,
+        status,
         error,
         contextGroups,
         contextToggles,
@@ -205,8 +206,6 @@ export default function CuratorClient() {
         historyOpen,
         loadSessionFromHistory,
         startNewFromHistory,
-        keepPrevious,
-        setKeepPrevious,
     } = useCuratorSession();
 
     const contextSummary = useMemo(
@@ -217,10 +216,11 @@ export default function CuratorClient() {
         [curatedSelections],
     );
 
-    const topCollapsed = Boolean(result && step === 4);
+    const topCollapsed = status === 'ready';
+    const showResults = status !== 'idle';
 
     return (
-        <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 pt-header text-white">
+        <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 pt-18 text-white">
             <div className="pointer-events-none absolute inset-0">
                 <div className="absolute left-[-10%] top-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
                 <div className="absolute right-[-6%] top-24 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -265,6 +265,9 @@ export default function CuratorClient() {
                             <StepPill active={step === 1} locked={false} label="Choose curator" number={1} />
                             <StepPill active={step === 2} locked={!canProceedToContext} label="Set the context" number={2} />
                             <StepPill active={step === 3} locked={!canProceedToSummary} label="Confirm & start" number={3} />
+                            {showResults && (
+                                <StepPill active={status === 'loading' || status === 'ready'} locked={false} label="Results" number={4} />
+                            )}
                         </div>
 
                         <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 md:p-8 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
@@ -494,23 +497,14 @@ export default function CuratorClient() {
                                                     {contextSummary}
                                                 </p>
                                             </div>
-                                            <div className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/20 via-white/5 to-black/40 p-4">
-                                                <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
-                                                    Session settings
-                                                </p>
-                                                <label className="flex items-center gap-3 text-sm text-gray-200">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={keepPrevious}
-                                                        onChange={e => setKeepPrevious(e.target.checked)}
-                                                        className="h-4 w-4 rounded border border-white/20 bg-black/40"
-                                                    />
-                                                    Keep previous results visible when restarting
-                                                </label>
-                                                <p className="text-xs text-gray-400">
-                                                    Start session resets results unless you keep them.
-                                                </p>
-                                            </div>
+                                        <div className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/20 via-white/5 to-black/40 p-4">
+                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                                Session settings
+                                            </p>
+                                            <p className="text-sm text-gray-200">
+                                                Starting a session clears previous results. History is available via “Recent sessions.”
+                                            </p>
+                                        </div>
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-3">
@@ -570,10 +564,10 @@ export default function CuratorClient() {
                 )}
 
                 <div ref={resultsRef}>
-                    {(loading || result) && (
+                    {showResults && (
                         <CuratorResults
-                            result={result}
-                            loading={loading}
+                            result={status === 'ready' ? result : null}
+                            status={status}
                             onRefine={startSession}
                             activePreset={refinePreset}
                             onEdit={goToContext}

@@ -38,6 +38,8 @@ export interface CuratorRecommendationResponse {
     primary: AiRecommendedMovie | null;
     alternatives: AiRecommendedMovie[];
     curator_note?: string;
+    replacement?: AiRecommendedMovie | null;
+    replacementRole?: 'primary' | 'alternative';
 }
 
 export type RefinePreset =

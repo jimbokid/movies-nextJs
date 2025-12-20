@@ -3,11 +3,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useMemo } from 'react';
-import { CuratorRecommendationResponse, RefinePreset } from '@/types/curator';
+import { AiRecommendedMovie } from '@/types/discoverAi';
+import { RefinePreset } from '@/types/curator';
 import CuratorLoading, { CuratorLoadingMode } from './CuratorLoading';
 
+type CuratedPick = (AiRecommendedMovie & { locked?: boolean; expanded?: boolean }) | null;
+
 interface CuratorResultsProps {
-    result: CuratorRecommendationResponse | null;
+    primary: CuratedPick;
+    alternatives: CuratedPick[];
     status: 'idle' | 'loading' | 'ready' | 'error';
     onRefine: (preset: RefinePreset) => void;
     activePreset?: RefinePreset;
@@ -18,6 +22,11 @@ interface CuratorResultsProps {
     curatorName?: string;
     loadingMessage?: string;
     thinkingLines?: string[];
+    onLock: (role: 'primary' | 'alternative', index?: number) => void;
+    onExplain: (role: 'primary' | 'alternative', index?: number) => void;
+    onSwap: (role: 'primary' | 'alternative', index?: number) => void;
+    swapTarget: { role: 'primary' | 'alternative'; index?: number } | null;
+    curatorNote?: string | null;
 }
 
 const refineOptions: { label: string; preset: RefinePreset }[] = [
@@ -29,36 +38,40 @@ const refineOptions: { label: string; preset: RefinePreset }[] = [
     { label: 'Surprise me', preset: 'surprise' },
 ];
 
-function truncateNote(note?: string) {
+function truncateNote(note?: string | null) {
     if (!note) return null;
     const sentences = note.split(/(?<=[.!?])\s+/).slice(0, 2);
     return sentences.join(' ');
 }
 
 function MovieCard({
-    title,
-    reason,
-    poster_path,
-    release_year,
-    vote_average,
-    tmdb_id,
+    pick,
     priority,
+    onLock,
+    onExplain,
+    onSwap,
+    swapping,
 }: {
-    title: string;
-    reason?: string;
-    poster_path?: string | null;
-    release_year?: number;
-    vote_average?: number;
-    tmdb_id?: number;
+    pick: CuratedPick;
     priority?: boolean;
+    onLock: () => void;
+    onExplain: () => void;
+    onSwap: () => void;
+    swapping?: boolean;
 }) {
+    if (!pick) {
+        return <div className="h-full min-h-[240px] rounded-2xl border border-white/10 bg-white/5" />;
+    }
+
+    const { title, reason, poster_path, release_year, vote_average, tmdb_id, locked, expanded } = pick;
+
     const content = (
         <div
             className={`group relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition ${
                 tmdb_id
                     ? 'hover:border-purple-300/60 hover:shadow-[0_10px_30px_rgba(124,58,237,0.2)]'
                     : 'opacity-80'
-            }`}
+            } ${locked ? 'ring-1 ring-amber-400/70' : ''}`}
         >
             <div className="relative aspect-[2/3] w-full">
                 {poster_path ? (
@@ -77,15 +90,44 @@ function MovieCard({
                 )}
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-4 space-y-2">
+            <div className="absolute inset-x-0 bottom-0 space-y-2 p-4">
                 <div className="flex items-center justify-between text-xs text-gray-200">
                     <span className="rounded-full bg-white/10 px-3 py-1">{release_year ?? '—'}</span>
-                    {vote_average ? (
-                        <span className="text-amber-200">⭐ {vote_average.toFixed(1)}</span>
-                    ) : null}
+                    <div className="flex items-center gap-2">
+                        {locked && <span className="text-amber-200">🔒</span>}
+                        {vote_average ? <span className="text-amber-200">⭐ {vote_average.toFixed(1)}</span> : null}
+                    </div>
                 </div>
                 <h4 className="text-lg font-semibold text-white">{title}</h4>
-                {reason && <p className="text-sm text-gray-200 leading-relaxed line-clamp-2">{reason}</p>}
+                {expanded && reason ? (
+                    <p className="text-sm text-gray-100 leading-relaxed">{reason}</p>
+                ) : reason ? (
+                    <p className="text-sm text-gray-200 leading-relaxed line-clamp-2">{reason}</p>
+                ) : null}
+                <div className="flex flex-wrap gap-2 pt-1 text-xs text-gray-200">
+                    <button
+                        type="button"
+                        onClick={onExplain}
+                        className="rounded-full border border-white/10 px-3 py-1 hover:border-purple-300/60"
+                    >
+                        {expanded ? 'Hide reason' : 'Explain'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onSwap}
+                        className="rounded-full border border-white/10 px-3 py-1 hover:border-emerald-300/60"
+                        disabled={swapping}
+                    >
+                        {swapping ? 'Swapping…' : 'Swap this one'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onLock}
+                        className={`rounded-full border px-3 py-1 ${locked ? 'border-amber-300/80 bg-amber-500/10 text-amber-100' : 'border-white/10 bg-white/5 hover:border-purple-300/60'}`}
+                    >
+                        {locked ? 'Unlock' : 'Lock pick'}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -103,7 +145,8 @@ function MovieCard({
 }
 
 export default function CuratorResults({
-    result,
+    primary,
+    alternatives,
     status,
     onRefine,
     activePreset,
@@ -114,11 +157,14 @@ export default function CuratorResults({
     curatorName,
     loadingMessage,
     thinkingLines,
+    onLock,
+    onExplain,
+    onSwap,
+    swapTarget,
+    curatorNote,
 }: CuratorResultsProps) {
-    const primaryPick = result?.primary;
-    const alternatives = result?.alternatives ?? [];
-    const hasResults = Boolean(primaryPick || alternatives.length);
-    const curatorNote = useMemo(() => truncateNote(result?.curator_note), [result?.curator_note]);
+    const hasResults = Boolean(primary || alternatives.length);
+    const note = useMemo(() => truncateNote(curatorNote), [curatorNote]);
 
     return (
         <div className="relative space-y-5 rounded-3xl border border-white/10 bg-white/5 p-5 md:p-8">
@@ -153,32 +199,27 @@ export default function CuratorResults({
             </div>
 
             <div className="relative min-h-[560px] overflow-hidden">
-                {status === 'ready' && result && (
+                {status === 'ready' && (
                     <div className="space-y-6">
-                        {curatorNote && (
+                        {note && (
                             <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-purple-500/10 to-white/5 p-4 text-sm text-gray-100">
                                 <p className="text-xs uppercase tracking-[0.18em] text-purple-200">
-                                    {result.curator.emoji} {result.curator.name} notes
+                                    {curatorEmoji} {curatorName} notes
                                 </p>
-                                <p className="mt-1 leading-relaxed line-clamp-2">{curatorNote}</p>
+                                <p className="mt-1 leading-relaxed line-clamp-2">{note}</p>
                             </div>
                         )}
 
                         <div className="grid gap-4 md:grid-cols-3">
                             <div className="md:col-span-2">
-                                {primaryPick ? (
-                                    <MovieCard
-                                        title={primaryPick.title}
-                                        reason={primaryPick.reason}
-                                        poster_path={primaryPick.poster_path}
-                                        release_year={primaryPick.release_year}
-                                        vote_average={primaryPick.vote_average}
-                                        tmdb_id={primaryPick.tmdb_id}
-                                        priority
-                                    />
-                                ) : (
-                                    <div className="h-full min-h-[340px] rounded-2xl border border-white/10 bg-white/5" />
-                                )}
+                                <MovieCard
+                                    pick={primary}
+                                    priority
+                                    onLock={() => onLock('primary', 0)}
+                                    onExplain={() => onExplain('primary', 0)}
+                                    onSwap={() => onSwap('primary', 0)}
+                                    swapping={swapTarget?.role === 'primary'}
+                                />
                             </div>
                             <div className="space-y-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
@@ -217,21 +258,18 @@ export default function CuratorResults({
                                     </span>
                                     <span className="h-px w-12 bg-white/10" />
                                 </div>
-                                <span className="text-xs text-gray-400">
-                                    All cards are clickable for details
-                                </span>
+                                <span className="text-xs text-gray-400">All cards are clickable for details</span>
                             </div>
                             {alternatives.length > 0 ? (
                                 <div className="grid gap-4 md:grid-cols-3">
-                                    {alternatives.slice(0, 6).map(movie => (
+                                    {alternatives.slice(0, 6).map((movie, idx) => (
                                         <MovieCard
-                                            key={`${movie.title}-${movie.release_year ?? 'n/a'}`}
-                                            title={movie.title}
-                                            reason={movie.reason}
-                                            poster_path={movie.poster_path}
-                                            release_year={movie.release_year}
-                                            vote_average={movie.vote_average}
-                                            tmdb_id={movie.tmdb_id}
+                                            key={`${movie?.title ?? 'alt'}-${idx}`}
+                                            pick={movie}
+                                            onLock={() => onLock('alternative', idx)}
+                                            onExplain={() => onExplain('alternative', idx)}
+                                            onSwap={() => onSwap('alternative', idx)}
+                                            swapping={swapTarget?.role === 'alternative' && swapTarget.index === idx}
                                         />
                                     ))}
                                 </div>

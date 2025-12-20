@@ -11,6 +11,16 @@ interface RequestBody {
     selected?: CuratorSelection[];
     previousTitles?: string[];
     refinePreset?: RefinePreset;
+    mode?: 'full' | 'swap_primary' | 'swap_alternative';
+    lockedTitles?: string[];
+    rejectedTitles?: string[];
+    swappedTitles?: string[];
+    targetTitle?: string;
+    moodDrift?: {
+        funSerious?: number;
+        mainstreamIndie?: number;
+        safeBold?: number;
+    };
 }
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-5.2';
@@ -89,6 +99,15 @@ function isRefinePreset(value: unknown): value is RefinePreset {
         value === 'only_newer' ||
         value === 'surprise'
     );
+}
+
+function normalizeTitleArray(list: unknown[]): string[] {
+    return Array.isArray(list)
+        ? list
+              .filter(item => typeof item === 'string')
+              .map(item => item.trim())
+              .filter(Boolean)
+        : [];
 }
 
 function clampCuratorNote(note?: string | null) {
@@ -425,11 +444,44 @@ function buildRefinePresetText(refinePreset?: RefinePreset) {
     }
 }
 
+function buildMoodDriftText(moodDrift?: RequestBody['moodDrift']) {
+    if (!moodDrift) return '';
+    const parts: string[] = [];
+    if (moodDrift.funSerious) {
+        parts.push(
+            moodDrift.funSerious > 0
+                ? 'Lean slightly more serious/grounded; avoid overly goofy picks.'
+                : 'Lean more playful/fun; avoid heavy or dour picks.',
+        );
+    }
+    if (moodDrift.mainstreamIndie) {
+        parts.push(
+            moodDrift.mainstreamIndie > 0
+                ? 'Favor mainstream accessibility and popularity.'
+                : 'Favor indie/underseen energy while staying watchable.',
+        );
+    }
+    if (moodDrift.safeBold) {
+        parts.push(
+            moodDrift.safeBold > 0
+                ? 'Allow bolder/riskier stylistic swings.'
+                : 'Keep things safer and widely appealing.',
+        );
+    }
+    return parts.length ? `Mood drift guidance: ${parts.join(' ')}` : '';
+}
+
 function buildPrompt({
     curator,
     selected,
     previousTitles,
     refinePreset,
+    lockedTitles,
+    rejectedTitles,
+    swappedTitles,
+    moodDrift,
+    mode,
+    targetTitle,
     need,
     strict,
     moodRules,
@@ -437,6 +489,12 @@ function buildPrompt({
     curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
+    lockedTitles: string[];
+    rejectedTitles: string[];
+    swappedTitles: string[];
+    moodDrift?: RequestBody['moodDrift'];
+    mode: RequestBody['mode'];
+    targetTitle?: string;
     refinePreset?: RefinePreset;
     need: number;
     strict?: boolean;
@@ -446,6 +504,7 @@ function buildPrompt({
     const preferredStart = curator.preferredStartYear ?? Math.max(curator.minYear, 1995);
     const moodRuleText = buildMoodRulesText(moodRules, curator.tasteBand);
     const refineText = buildRefinePresetText(refinePreset);
+    const moodDriftText = buildMoodDriftText(moodDrift);
     const personaRules = () => {
         const anchors = [
             curator.personaBias ? `Persona bias: ${curator.personaBias}.` : '',
@@ -486,16 +545,36 @@ function buildPrompt({
     };
 
     const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
-    const avoidTitles = previousTitles.slice(0, PREVIOUS_TITLES_MAX).join(', ');
+    const avoidTitles = Array.from(
+        new Set([...previousTitles, ...lockedTitles, ...rejectedTitles, ...swappedTitles]),
+    )
+        .slice(0, PREVIOUS_TITLES_MAX)
+        .join(', ');
     const avoidLines = avoidTitles
         ? `Do not include any of these titles: ${avoidTitles}. If you would choose one, replace it.`
         : 'Avoid generic safe picks and overly common defaults.';
+    const lockText = lockedTitles.length
+        ? `Locked titles must remain unchanged. Do not propose replacements for them: ${lockedTitles.join(', ')}.`
+        : '';
+    const rejectedText = rejectedTitles.length
+        ? `Users rejected/swapped these, avoid similar misfires: ${rejectedTitles.join(', ')}.`
+        : '';
+    const swapText =
+        mode === 'swap_primary' || mode === 'swap_alternative'
+            ? `You are replacing only the ${mode === 'swap_primary' ? 'primary' : 'alternative'} pick${
+                  targetTitle ? ` (${targetTitle})` : ''
+              }. Return exactly ${need} new movie for this slot, keep everything else intact.`
+            : '';
 
     return (
         `You are ${curator.name} ${curator.emoji} with a tone that is ${curator.tone}. Your style is ${curator.promptStyle}.\n${personaRules()}\n\n` +
         `Context selections:\n${contextLines}\n\n` +
         `${moodRuleText ? `Mood constraints (hard rules):\n${moodRuleText}\n` : ''}` +
         `${refineText ? `Refine intent: ${refineText}\n` : ''}` +
+        `${moodDriftText ? `${moodDriftText}\n` : ''}` +
+        `${lockText ? `${lockText}\n` : ''}` +
+        `${rejectedText ? `${rejectedText}\n` : ''}` +
+        `${swapText}\n` +
         `${avoidLines}\n` +
         `Recommend exactly ${need} films total. Only include films released between ${curator.minYear} and ${maxYear}. If any title falls outside this window, replace it. Prefer ${preferredStart} or newer when possible. ` +
         `Movies must be recognizable/popular (no ultra-underground festival-only picks). Keep variety across decades and genres and avoid repeating the same director twice unless essential. ` +
@@ -516,14 +595,28 @@ async function requestCuratorBatch({
     curator,
     selected,
     previousTitles,
+    lockedTitles,
+    rejectedTitles,
+    swappedTitles,
     refinePreset,
+    moodDrift,
+    mode,
+    targetTitle,
+    need,
     strict,
     moodRules,
 }: {
     curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
+    lockedTitles: string[];
+    rejectedTitles: string[];
+    swappedTitles: string[];
     refinePreset?: RefinePreset;
+    moodDrift?: RequestBody['moodDrift'];
+    mode: RequestBody['mode'];
+    targetTitle?: string;
+    need: number;
     strict?: boolean;
     moodRules: MoodRule[];
 }) {
@@ -531,8 +624,14 @@ async function requestCuratorBatch({
         curator,
         selected,
         previousTitles,
+        lockedTitles,
+        rejectedTitles,
+        swappedTitles,
+        moodDrift,
+        mode,
+        targetTitle,
         refinePreset,
-        need: MOVIES_NUMBER_LIMIT,
+        need,
         strict,
         moodRules,
     });
@@ -887,10 +986,22 @@ export async function POST(req: Request) {
     const curatorId = body?.curatorId;
     const selectedRaw = Array.isArray(body?.selected) ? body.selected : [];
     const selected = selectedRaw.filter(isCuratorSelection);
-    const previousTitles = Array.isArray(body?.previousTitles)
-        ? (body?.previousTitles.filter(item => typeof item === 'string') as string[])
-        : [];
+    const previousTitles = normalizeTitleArray(body?.previousTitles ?? []);
+    const lockedTitles = normalizeTitleArray(body?.lockedTitles ?? []);
+    const rejectedTitles = normalizeTitleArray(body?.rejectedTitles ?? []);
+    const swappedTitles = normalizeTitleArray(body?.swappedTitles ?? []);
     const refinePreset = isRefinePreset(body?.refinePreset) ? body?.refinePreset : undefined;
+    const mode: RequestBody['mode'] = body?.mode === 'swap_primary' || body?.mode === 'swap_alternative' ? body.mode : 'full';
+    const targetTitle = typeof body?.targetTitle === 'string' ? body.targetTitle : undefined;
+    const moodDrift = body?.moodDrift
+        ? {
+              funSerious: Number.isFinite(body.moodDrift.funSerious) ? Math.max(-1, Math.min(1, Number(body.moodDrift.funSerious))) : 0,
+              mainstreamIndie: Number.isFinite(body.moodDrift.mainstreamIndie)
+                  ? Math.max(-1, Math.min(1, Number(body.moodDrift.mainstreamIndie)))
+                  : 0,
+              safeBold: Number.isFinite(body.moodDrift.safeBold) ? Math.max(-1, Math.min(1, Number(body.moodDrift.safeBold))) : 0,
+          }
+        : undefined;
 
     if (!curatorId) {
         return NextResponse.json({ message: 'Please choose a curator persona.' }, { status: 400 });
@@ -906,12 +1017,20 @@ export async function POST(req: Request) {
     try {
         const personaMinYear = refinePreset === 'only_newer' ? Math.max(curator.minYear, 2015) : curator.minYear;
         const persona: CuratorPersona = { ...curator, minYear: personaMinYear };
+        const need = mode === 'swap_primary' || mode === 'swap_alternative' ? 1 : MOVIES_NUMBER_LIMIT;
 
         const initialContent = await requestCuratorBatch({
             curator: persona,
             selected,
             previousTitles,
+            lockedTitles,
+            rejectedTitles,
+            swappedTitles,
             refinePreset,
+            moodDrift,
+            mode,
+            targetTitle,
+            need,
             moodRules: activeMoodRules,
         });
         let { primary, alternatives, curator_note } = parseAiResponse(initialContent);
@@ -922,10 +1041,35 @@ export async function POST(req: Request) {
                 selected,
                 previousTitles,
                 refinePreset,
+                lockedTitles,
+                rejectedTitles,
+                swappedTitles,
+                moodDrift,
+                mode,
+                targetTitle,
+                need,
                 strict: true,
                 moodRules: activeMoodRules,
             });
             ({ primary, alternatives, curator_note } = parseAiResponse(strictContent));
+        }
+
+        if (mode === 'swap_primary' || mode === 'swap_alternative') {
+            const swapCandidate = mode === 'swap_primary' ? primary ?? alternatives[0] ?? null : alternatives[0] ?? primary ?? null;
+            const enrichedSwap = swapCandidate ? await enrichMovie(swapCandidate) : null;
+            const payload: CuratorRecommendationResponse = {
+                curator: {
+                    id: persona.id,
+                    name: persona.name,
+                    emoji: persona.emoji,
+                },
+                primary: null,
+                alternatives: [],
+                curator_note: curator_note,
+                replacement: enrichedSwap ?? null,
+                replacementRole: mode === 'swap_primary' ? 'primary' : 'alternative',
+            };
+            return NextResponse.json(payload, { status: 200 });
         }
 
         const combined: AiRecommendedMovie[] = [];

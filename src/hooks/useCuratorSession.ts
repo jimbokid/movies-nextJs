@@ -11,13 +11,14 @@ import {
     CuratorSession,
     RefinePreset,
 } from '@/types/curator';
-import { CuratorPersona, CuratorId } from '@/types/discoverAi';
+import { AiRecommendedMovie, CuratorPersona, CuratorId } from '@/types/discoverAi';
 import { readLocalStorage, writeLocalStorage } from '@/utils/storage';
 
 const AI_CURATOR_ENDPOINT = '/api/ai-curator';
 const SESSION_STORAGE_KEY = 'cineview.curator.sessions.v1';
 const PREVIOUS_TITLES_CAP = 20;
 type SessionStatus = 'idle' | 'loading' | 'ready' | 'error';
+type CuratedPick = (AiRecommendedMovie & { locked?: boolean; expanded?: boolean }) | null;
 
 export type CuratorStep = 1 | 2 | 3 | 4;
 
@@ -62,11 +63,21 @@ export function useCuratorSession() {
     );
     const [result, setResult] = useState<CuratorRecommendationResponse | null>(null);
     const [refinePreset, setRefinePreset] = useState<RefinePreset | undefined>(undefined);
+    const [lineupPrimary, setLineupPrimary] = useState<CuratedPick | null>(null);
+    const [lineupAlternatives, setLineupAlternatives] = useState<CuratedPick[]>([]);
     const [sessions, setSessions] = useState<CuratorSession[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [loadingLineIndex, setLoadingLineIndex] = useState(0);
     const [status, setStatus] = useState<SessionStatus>('idle');
+    const [swapTarget, setSwapTarget] = useState<{ role: 'primary' | 'alternative'; index?: number } | null>(null);
+    const [rejectedTitles, setRejectedTitles] = useState<string[]>([]);
+    const [swappedTitles, setSwappedTitles] = useState<string[]>([]);
+    const [moodDrift, setMoodDrift] = useState<{ funSerious: number; mainstreamIndie: number; safeBold: number }>({
+        funSerious: 0,
+        mainstreamIndie: 0,
+        safeBold: 0,
+    });
     const [historyOpen, setHistoryOpen] = useState(false);
     const resultsRef = useRef<HTMLDivElement | null>(null);
     const controllerRef = useRef<AbortController | null>(null);
@@ -138,6 +149,11 @@ export function useCuratorSession() {
         (opts?: { preserveRefine?: boolean }) => {
             setResult(null);
             setStatus('idle');
+            setLineupPrimary(null);
+            setLineupAlternatives([]);
+            setSwapTarget(null);
+            setRejectedTitles([]);
+            setSwappedTitles([]);
             if (!opts?.preserveRefine) {
                 setRefinePreset(undefined);
             }
@@ -173,10 +189,63 @@ export function useCuratorSession() {
         setStep(selectedCuratorId ? 2 : 1);
     }, [resetCuratorResults, selectedCuratorId]);
 
+    const toCuratedPick = (movie: AiRecommendedMovie | null, locked = false): CuratedPick =>
+        movie ? { ...movie, locked, expanded: false } : null;
+
+    const applyFreshResult = useCallback(
+        (data: CuratorRecommendationResponse) => {
+            setResult(data);
+            const primaryPick = toCuratedPick(data.primary);
+            const altPicks = data.alternatives.map(item => toCuratedPick(item)).filter(Boolean) as CuratedPick[];
+            setLineupPrimary(primaryPick);
+            setLineupAlternatives(altPicks.slice(0, 6));
+        },
+        [],
+    );
+
+    const mergeResultRespectingLocks = useCallback(
+        (data: CuratorRecommendationResponse) => {
+            setResult(data);
+            const incomingPrimary = toCuratedPick(data.primary);
+            const incomingAlts = data.alternatives.map(item => toCuratedPick(item)).filter(Boolean) as CuratedPick[];
+            const lockedPrimary = lineupPrimary?.locked ? lineupPrimary : null;
+            const primaryPick = lockedPrimary ?? incomingPrimary;
+
+            const lockedAlts = lineupAlternatives.filter(pick => pick?.locked);
+            const lockedTitles = lockedAlts
+                .map(item => item?.title)
+                .filter(Boolean) as string[];
+            const seen = new Set<string>([
+                ...(primaryPick?.title ? [primaryPick.title] : []),
+                ...lockedTitles,
+            ]);
+
+            const mergedAlts: CuratedPick[] = [...lockedAlts];
+            incomingAlts.forEach(item => {
+                if (!item?.title) return;
+                const key = item.title;
+                if (seen.has(key)) return;
+                mergedAlts.push(item);
+                seen.add(key);
+            });
+
+            setLineupPrimary(primaryPick ?? null);
+            setLineupAlternatives(mergedAlts.slice(0, 6));
+        },
+        [lineupAlternatives, lineupPrimary],
+    );
+
     const cancelInFlight = () => {
         if (controllerRef.current) {
             controllerRef.current.abort();
         }
+    };
+
+    const collectCurrentTitles = () => {
+        const titles: string[] = [];
+        if (lineupPrimary?.title) titles.push(lineupPrimary.title);
+        lineupAlternatives.forEach(item => item?.title && titles.push(item.title));
+        return titles;
     };
 
     const startSession = useCallback(
@@ -204,6 +273,11 @@ export function useCuratorSession() {
                         selected: curatedSelections,
                         refinePreset: usePreset,
                         previousTitles: buildPreviousTitles(),
+                        lockedTitles: collectCurrentTitles(),
+                        rejectedTitles,
+                        swappedTitles,
+                        mode: 'full',
+                        moodDrift,
                     }),
                     signal: controller.signal,
                 });
@@ -214,7 +288,11 @@ export function useCuratorSession() {
                 }
 
                 const data: CuratorRecommendationResponse = await response.json();
-                setResult(data);
+                if (lineupPrimary?.locked || lineupAlternatives.some(item => item?.locked)) {
+                    mergeResultRespectingLocks(data);
+                } else {
+                    applyFreshResult(data);
+                }
                 setStatus('ready');
 
                 setSessions(prev => {
@@ -240,14 +318,18 @@ export function useCuratorSession() {
             }
         },
         [
+            applyFreshResult,
             buildPreviousTitles,
             canStartSession,
             contextSelections,
             curatedSelections,
+            moodDrift,
             refinePreset,
+            rejectedTitles,
             resetCuratorResults,
             selectedCurator,
             toggleSelections,
+            swappedTitles,
         ],
     );
 
@@ -271,6 +353,85 @@ export function useCuratorSession() {
         }
     };
 
+    const toggleLock = (role: 'primary' | 'alternative', index = 0) => {
+        if (role === 'primary') {
+            setLineupPrimary(prev => (prev ? { ...prev, locked: !prev.locked } : prev));
+            return;
+        }
+        setLineupAlternatives(prev =>
+            prev.map((item, idx) => {
+                if (idx !== index || !item) return item;
+                return { ...item, locked: !item.locked };
+            }),
+        );
+    };
+
+    const toggleExplain = (role: 'primary' | 'alternative', index = 0) => {
+        if (role === 'primary') {
+            setLineupPrimary(prev => (prev ? { ...prev, expanded: !prev.expanded } : prev));
+            return;
+        }
+        setLineupAlternatives(prev =>
+            prev.map((item, idx) => {
+                if (idx !== index || !item) return item;
+                return { ...item, expanded: !item.expanded };
+            }),
+        );
+    };
+
+    const handleSwap = async (role: 'primary' | 'alternative', index = 0) => {
+        const target = role === 'primary' ? lineupPrimary : lineupAlternatives[index] ?? null;
+        if (!selectedCurator || !target || target.locked) return;
+
+        setSwapTarget({ role, index });
+        try {
+            const response = await fetch(AI_CURATOR_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    curatorId: selectedCurator.id,
+                    selected: curatedSelections,
+                    refinePreset,
+                    previousTitles: buildPreviousTitles(),
+                    lockedTitles: collectCurrentTitles().filter(title => {
+                        if (role === 'primary' && lineupPrimary?.title === title) return false;
+                        if (role === 'alternative' && lineupAlternatives[index]?.title === title) return false;
+                        return true;
+                    }),
+                    rejectedTitles,
+                    swappedTitles,
+                    targetTitle: target.title,
+                    mode: role === 'primary' ? 'swap_primary' : 'swap_alternative',
+                    moodDrift,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Unable to swap this pick.');
+            }
+            const data: CuratorRecommendationResponse = await response.json();
+            const replacement = data.replacement ?? data.primary ?? data.alternatives[0] ?? null;
+            if (replacement) {
+                const newPick: CuratedPick = { ...replacement, locked: false, expanded: false };
+                if (role === 'primary') {
+                    setRejectedTitles(prev => [...prev, lineupPrimary?.title ?? ''].filter(Boolean));
+                    setLineupPrimary(newPick);
+                } else {
+                    setRejectedTitles(prev => [...prev, lineupAlternatives[index]?.title ?? ''].filter(Boolean));
+                    setLineupAlternatives(prev => {
+                        const next = [...prev];
+                        next[index] = newPick;
+                        return next;
+                    });
+                }
+                setSwappedTitles(prev => [...prev, target.title]);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Swap failed.');
+        } finally {
+            setSwapTarget(null);
+        }
+    };
+
     const openHistory = () => setHistoryOpen(true);
     const closeHistory = () => setHistoryOpen(false);
 
@@ -279,7 +440,7 @@ export function useCuratorSession() {
         if (!session) return;
         setSelectedCuratorId(session.curatorId);
         setRefinePreset(session.refinePreset);
-        setResult(session.result);
+        applyFreshResult(session.result);
         setStatus('ready');
         setStep(4);
         setHistoryOpen(false);
@@ -342,6 +503,14 @@ export function useCuratorSession() {
         historyOpen,
         loadSessionFromHistory,
         startNewFromHistory,
+        lineupPrimary,
+        lineupAlternatives,
+        toggleLock,
+        toggleExplain,
+        handleSwap,
+        swapTarget,
+        moodDrift,
+        setMoodDrift,
     };
 }
 

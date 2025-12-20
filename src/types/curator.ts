@@ -1,4 +1,5 @@
 import { AiRecommendedMovie } from './discoverAi';
+import { CuratorId } from './discoverAi';
 
 export interface CuratorSelection {
     label: string;
@@ -36,4 +37,25 @@ export interface CuratorRecommendationResponse {
     curator: CuratorSummary;
     primary: AiRecommendedMovie | null;
     alternatives: AiRecommendedMovie[];
+    curator_note?: string;
+    replacement?: AiRecommendedMovie | null;
+    replacementRole?: 'primary' | 'alternative';
+}
+
+export type RefinePreset =
+    | 'more_fun'
+    | 'darker'
+    | 'more_mainstream'
+    | 'more_indie'
+    | 'only_newer'
+    | 'surprise';
+
+export interface CuratorSession {
+    id: string;
+    createdAt: number;
+    curatorId: CuratorId;
+    selectedBadges: CuratorSelection[];
+    context?: Record<string, unknown>;
+    refinePreset?: RefinePreset;
+    result: CuratorRecommendationResponse;
 }

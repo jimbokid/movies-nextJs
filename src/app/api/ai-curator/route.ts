@@ -2,7 +2,7 @@ import axios from 'axios';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { AiRecommendedMovie, CuratorPersona } from '@/types/discoverAi';
-import { CuratorRecommendationResponse, CuratorSelection } from '@/types/curator';
+import { CuratorRecommendationResponse, CuratorSelection, RefinePreset } from '@/types/curator';
 import { CURATOR_PERSONAS } from '@/data/curators';
 import { getActiveMoodRules, MoodRule } from './moodRules';
 
@@ -10,6 +10,17 @@ interface RequestBody {
     curatorId?: CuratorPersona['id'];
     selected?: CuratorSelection[];
     previousTitles?: string[];
+    refinePreset?: RefinePreset;
+    mode?: 'full' | 'swap_primary' | 'swap_alternative';
+    lockedTitles?: string[];
+    rejectedTitles?: string[];
+    swappedTitles?: string[];
+    targetTitle?: string;
+    moodDrift?: {
+        funSerious?: number;
+        mainstreamIndie?: number;
+        safeBold?: number;
+    };
 }
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-5.2';
@@ -72,6 +83,39 @@ const TMDB_GENRE_MAP = new Map<number, string>([
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isCuratorSelection(value: unknown): value is CuratorSelection {
+    if (!isRecord(value)) return false;
+    return typeof value.label === 'string' && typeof value.category === 'string';
+}
+
+function isRefinePreset(value: unknown): value is RefinePreset {
+    return (
+        value === 'more_fun' ||
+        value === 'darker' ||
+        value === 'more_mainstream' ||
+        value === 'more_indie' ||
+        value === 'only_newer' ||
+        value === 'surprise'
+    );
+}
+
+function normalizeTitleArray(list: unknown[]): string[] {
+    return Array.isArray(list)
+        ? list
+              .filter(item => typeof item === 'string')
+              .map(item => item.trim())
+              .filter(Boolean)
+        : [];
+}
+
+function clampCuratorNote(note?: string | null) {
+    if (!note || typeof note !== 'string') return undefined;
+    const trimmed = note.trim();
+    if (!trimmed) return undefined;
+    const sentences = trimmed.split(/(?<=[.!?])\s+/).slice(0, 2);
+    return sentences.join(' ').slice(0, 320);
 }
 
 function isWithinYearRange(year: number | undefined, curator: CuratorPersona) {
@@ -218,6 +262,7 @@ function normalizeMovie(item: unknown): AiRecommendedMovie | null {
 function parseAiResponse(content: string): {
     primary: AiRecommendedMovie | null;
     alternatives: AiRecommendedMovie[];
+    curator_note?: string;
 } {
     const cleaned = sanitizeJsonString(content);
 
@@ -234,11 +279,11 @@ function parseAiResponse(content: string): {
         };
 
         if (Array.isArray(parsed)) {
-            return {  ...curateFromList(parsed) };
+            return { ...curateFromList(parsed) };
         }
 
         if (!isRecord(parsed)) {
-            return {  primary: null, alternatives: [] };
+            return { primary: null, alternatives: [] };
         }
 
         const primary = normalizeMovie(parsed.primary) ?? null;
@@ -253,19 +298,23 @@ function parseAiResponse(content: string): {
             .filter(Boolean)
             .slice(0, ALTERNATIVE_TARGET_MAX) as AiRecommendedMovie[];
 
+        const curatorNote = clampCuratorNote(
+            typeof parsed.curator_note === 'string' ? parsed.curator_note : undefined,
+        );
 
         if (!primary && Array.isArray(parsed)) {
             const fromArray = curateFromList(parsed as unknown[]);
-            return {  ...fromArray };
+            return { ...fromArray, curator_note: curatorNote };
         }
 
         return {
             primary,
             alternatives,
+            curator_note: curatorNote,
         };
     } catch (error) {
         console.error('Failed to parse AI curator response', error);
-        return {  primary: null, alternatives: [] };
+        return { primary: null, alternatives: [] };
     }
 }
 
@@ -376,10 +425,63 @@ function buildMoodRulesText(rules: MoodRule[], tasteBand: CuratorPersona['tasteB
     );
 }
 
+function buildRefinePresetText(refinePreset?: RefinePreset) {
+    switch (refinePreset) {
+        case 'more_fun':
+            return 'Refine: Lean fun/comedy/adventure forward, avoid bleak dramas and heavy crime.';
+        case 'darker':
+            return 'Refine: Allow darker thrillers and tense dramas with edge.';
+        case 'more_mainstream':
+            return 'Refine: Prefer mainstream, popular, widely-loved titles with strong ratings/popularity.';
+        case 'more_indie':
+            return 'Refine: Prefer indie/festival-feel picks, underseen but still watchable.';
+        case 'only_newer':
+            return 'Refine: Only include movies released in 2015 or later.';
+        case 'surprise':
+            return 'Refine: Allow one wildcard curveball that still fits the mood.';
+        default:
+            return '';
+    }
+}
+
+function buildMoodDriftText(moodDrift?: RequestBody['moodDrift']) {
+    if (!moodDrift) return '';
+    const parts: string[] = [];
+    if (moodDrift.funSerious) {
+        parts.push(
+            moodDrift.funSerious > 0
+                ? 'Lean slightly more serious/grounded; avoid overly goofy picks.'
+                : 'Lean more playful/fun; avoid heavy or dour picks.',
+        );
+    }
+    if (moodDrift.mainstreamIndie) {
+        parts.push(
+            moodDrift.mainstreamIndie > 0
+                ? 'Favor mainstream accessibility and popularity.'
+                : 'Favor indie/underseen energy while staying watchable.',
+        );
+    }
+    if (moodDrift.safeBold) {
+        parts.push(
+            moodDrift.safeBold > 0
+                ? 'Allow bolder/riskier stylistic swings.'
+                : 'Keep things safer and widely appealing.',
+        );
+    }
+    return parts.length ? `Mood drift guidance: ${parts.join(' ')}` : '';
+}
+
 function buildPrompt({
     curator,
     selected,
     previousTitles,
+    refinePreset,
+    lockedTitles,
+    rejectedTitles,
+    swappedTitles,
+    moodDrift,
+    mode,
+    targetTitle,
     need,
     strict,
     moodRules,
@@ -387,13 +489,22 @@ function buildPrompt({
     curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
+    lockedTitles: string[];
+    rejectedTitles: string[];
+    swappedTitles: string[];
+    moodDrift?: RequestBody['moodDrift'];
+    mode: RequestBody['mode'];
+    targetTitle?: string;
+    refinePreset?: RefinePreset;
     need: number;
     strict?: boolean;
     moodRules: MoodRule[];
 }) {
     const maxYear = curator.maxYear ?? CURRENT_YEAR;
-    const preferredStart = Math.max(curator.minYear, 1995);
+    const preferredStart = curator.preferredStartYear ?? Math.max(curator.minYear, 1995);
     const moodRuleText = buildMoodRulesText(moodRules, curator.tasteBand);
+    const refineText = buildRefinePresetText(refinePreset);
+    const moodDriftText = buildMoodDriftText(moodDrift);
     const personaRules = () => {
         const anchors = [
             curator.personaBias ? `Persona bias: ${curator.personaBias}.` : '',
@@ -434,26 +545,48 @@ function buildPrompt({
     };
 
     const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
-    const avoidTitles = previousTitles.slice(0, PREVIOUS_TITLES_MAX).join(', ');
+    const avoidTitles = Array.from(
+        new Set([...previousTitles, ...lockedTitles, ...rejectedTitles, ...swappedTitles]),
+    )
+        .slice(0, PREVIOUS_TITLES_MAX)
+        .join(', ');
     const avoidLines = avoidTitles
-        ? `Do not recommend any of these titles: ${avoidTitles}.`
+        ? `Do not include any of these titles: ${avoidTitles}. If you would choose one, replace it.`
         : 'Avoid generic safe picks and overly common defaults.';
+    const lockText = lockedTitles.length
+        ? `Locked titles must remain unchanged. Do not propose replacements for them: ${lockedTitles.join(', ')}.`
+        : '';
+    const rejectedText = rejectedTitles.length
+        ? `Users rejected/swapped these, avoid similar misfires: ${rejectedTitles.join(', ')}.`
+        : '';
+    const swapText =
+        mode === 'swap_primary' || mode === 'swap_alternative'
+            ? `You are replacing only the ${mode === 'swap_primary' ? 'primary' : 'alternative'} pick${
+                  targetTitle ? ` (${targetTitle})` : ''
+              }. Return exactly ${need} new movie for this slot, keep everything else intact.`
+            : '';
 
     return (
         `You are ${curator.name} ${curator.emoji} with a tone that is ${curator.tone}. Your style is ${curator.promptStyle}.\n${personaRules()}\n\n` +
         `Context selections:\n${contextLines}\n\n` +
-        `${moodRuleText}` +
+        `${moodRuleText ? `Mood constraints (hard rules):\n${moodRuleText}\n` : ''}` +
+        `${refineText ? `Refine intent: ${refineText}\n` : ''}` +
+        `${moodDriftText ? `${moodDriftText}\n` : ''}` +
+        `${lockText ? `${lockText}\n` : ''}` +
+        `${rejectedText ? `${rejectedText}\n` : ''}` +
+        `${swapText}\n` +
         `${avoidLines}\n` +
         `Recommend exactly ${need} films total. Only include films released between ${curator.minYear} and ${maxYear}. If any title falls outside this window, replace it. Prefer ${preferredStart} or newer when possible. ` +
         `Movies must be recognizable/popular (no ultra-underground festival-only picks). Keep variety across decades and genres and avoid repeating the same director twice unless essential. ` +
-        `Avoid repeating classic canon defaults every session (e.g., Fight Club, Shawshank, Inception) and avoid ultra-niche or hard-to-find titles. ` +
+        `Avoid repeating classic canon defaults every session (e.g., Fight Club, Shawshank, Inception) and avoid ultra-niche or hard-to-find titles. Do-not-pick list based on mood is already in constraints; respect it. ` +
         `Prefer movies with strong TMDB presence and widely available/streamable options when possible. ` +
         `IMPORTANT OUTPUT RULES:\n` +
         `- Do NOT add explanations outside JSON.\n` +
         `- Do NOT exceed sentence limits.\n\n` +
-        `Return JSON with fields: {"primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year": number, "reason"?: string}. ` +
+        `Return JSON with fields: {"primary": Movie, "alternatives": Movie[], "curator_note"?: string} where Movie = {"title": string, "release_year": number, "reason"?: string}. ` +
         `Ensure at least ${ALTERNATIVE_TARGET_MIN} and at most ${ALTERNATIVE_TARGET_MAX} alternatives and exactly ${PRIMARY_TARGET} primary pick. ` +
         `Include at least one unconventional choice within mainstream/recognizable bounds, prefer diversity by decade and country when relevant, and penalize repeats from prior sessions. ` +
+        `Curator_note must be 1-2 sentences only.\n` +
         `If unsure, choose the more mainstream option. Respond with raw JSON only—no markdown, no commentary.${strict ? ' Output strictly valid JSON.' : ''}`
     );
 }
@@ -462,12 +595,28 @@ async function requestCuratorBatch({
     curator,
     selected,
     previousTitles,
+    lockedTitles,
+    rejectedTitles,
+    swappedTitles,
+    refinePreset,
+    moodDrift,
+    mode,
+    targetTitle,
+    need,
     strict,
     moodRules,
 }: {
     curator: CuratorPersona;
     selected: CuratorSelection[];
     previousTitles: string[];
+    lockedTitles: string[];
+    rejectedTitles: string[];
+    swappedTitles: string[];
+    refinePreset?: RefinePreset;
+    moodDrift?: RequestBody['moodDrift'];
+    mode: RequestBody['mode'];
+    targetTitle?: string;
+    need: number;
     strict?: boolean;
     moodRules: MoodRule[];
 }) {
@@ -475,7 +624,14 @@ async function requestCuratorBatch({
         curator,
         selected,
         previousTitles,
-        need: MOVIES_NUMBER_LIMIT,
+        lockedTitles,
+        rejectedTitles,
+        swappedTitles,
+        moodDrift,
+        mode,
+        targetTitle,
+        refinePreset,
+        need,
         strict,
         moodRules,
     });
@@ -488,7 +644,8 @@ async function requestCuratorBatch({
                 role: 'system',
                 content:
                     'You are an AI movie curator. Always respond with strict JSON and never include markdown or code fences. ' +
-                    `Enforce persona tone in notes. Only include movies released between ${curator.minYear} and ${curator.maxYear ?? CURRENT_YEAR} and prefer modern picks.`,
+                    `Enforce persona tone in notes. Only include movies released between ${curator.minYear} and ${curator.maxYear ?? CURRENT_YEAR} and prefer modern picks. ` +
+                    'Include a curator_note field that is 1-2 sentences only.',
             },
             { role: 'user', content: userPrompt },
         ],
@@ -827,17 +984,27 @@ export async function POST(req: Request) {
 
     const body = (await req.json().catch(() => null)) as RequestBody | null;
     const curatorId = body?.curatorId;
-    const selected = body?.selected;
-    const previousTitles = Array.isArray(body?.previousTitles)
-        ? (body?.previousTitles.filter(item => typeof item === 'string') as string[])
-        : [];
+    const selectedRaw = Array.isArray(body?.selected) ? body.selected : [];
+    const selected = selectedRaw.filter(isCuratorSelection);
+    const previousTitles = normalizeTitleArray(body?.previousTitles ?? []);
+    const lockedTitles = normalizeTitleArray(body?.lockedTitles ?? []);
+    const rejectedTitles = normalizeTitleArray(body?.rejectedTitles ?? []);
+    const swappedTitles = normalizeTitleArray(body?.swappedTitles ?? []);
+    const refinePreset = isRefinePreset(body?.refinePreset) ? body?.refinePreset : undefined;
+    const mode: RequestBody['mode'] = body?.mode === 'swap_primary' || body?.mode === 'swap_alternative' ? body.mode : 'full';
+    const targetTitle = typeof body?.targetTitle === 'string' ? body.targetTitle : undefined;
+    const moodDrift = body?.moodDrift
+        ? {
+              funSerious: Number.isFinite(body.moodDrift.funSerious) ? Math.max(-1, Math.min(1, Number(body.moodDrift.funSerious))) : 0,
+              mainstreamIndie: Number.isFinite(body.moodDrift.mainstreamIndie)
+                  ? Math.max(-1, Math.min(1, Number(body.moodDrift.mainstreamIndie)))
+                  : 0,
+              safeBold: Number.isFinite(body.moodDrift.safeBold) ? Math.max(-1, Math.min(1, Number(body.moodDrift.safeBold))) : 0,
+          }
+        : undefined;
 
     if (!curatorId) {
         return NextResponse.json({ message: 'Please choose a curator persona.' }, { status: 400 });
-    }
-
-    if (!selected || !Array.isArray(selected) || selected.length === 0) {
-        return NextResponse.json({ message: 'Please provide context selections.' }, { status: 400 });
     }
 
     const curator = CURATOR_PERSONAS.find(persona => persona.id === curatorId);
@@ -848,25 +1015,68 @@ export async function POST(req: Request) {
     }
 
     try {
-        const initialContent = await requestCuratorBatch({ curator, selected, previousTitles, moodRules: activeMoodRules });
-        let {  primary, alternatives } = parseAiResponse(initialContent);
+        const personaMinYear = refinePreset === 'only_newer' ? Math.max(curator.minYear, 2015) : curator.minYear;
+        const persona: CuratorPersona = { ...curator, minYear: personaMinYear };
+        const need = mode === 'swap_primary' || mode === 'swap_alternative' ? 1 : MOVIES_NUMBER_LIMIT;
+
+        const initialContent = await requestCuratorBatch({
+            curator: persona,
+            selected,
+            previousTitles,
+            lockedTitles,
+            rejectedTitles,
+            swappedTitles,
+            refinePreset,
+            moodDrift,
+            mode,
+            targetTitle,
+            need,
+            moodRules: activeMoodRules,
+        });
+        let { primary, alternatives, curator_note } = parseAiResponse(initialContent);
 
         if (!primary && alternatives.length === 0) {
             const strictContent = await requestCuratorBatch({
-                curator,
+                curator: persona,
                 selected,
                 previousTitles,
+                refinePreset,
+                lockedTitles,
+                rejectedTitles,
+                swappedTitles,
+                moodDrift,
+                mode,
+                targetTitle,
+                need,
                 strict: true,
                 moodRules: activeMoodRules,
             });
-            ({ primary, alternatives } = parseAiResponse(strictContent));
+            ({ primary, alternatives, curator_note } = parseAiResponse(strictContent));
+        }
+
+        if (mode === 'swap_primary' || mode === 'swap_alternative') {
+            const swapCandidate = mode === 'swap_primary' ? primary ?? alternatives[0] ?? null : alternatives[0] ?? primary ?? null;
+            const enrichedSwap = swapCandidate ? await enrichMovie(swapCandidate) : null;
+            const payload: CuratorRecommendationResponse = {
+                curator: {
+                    id: persona.id,
+                    name: persona.name,
+                    emoji: persona.emoji,
+                },
+                primary: null,
+                alternatives: [],
+                curator_note: curator_note,
+                replacement: enrichedSwap ?? null,
+                replacementRole: mode === 'swap_primary' ? 'primary' : 'alternative',
+            };
+            return NextResponse.json(payload, { status: 200 });
         }
 
         const combined: AiRecommendedMovie[] = [];
         if (primary) combined.push(primary);
         combined.push(...alternatives);
 
-        const filtered = combined.filter(movie => isWithinYearRange(movie.release_year, curator));
+        const filtered = combined.filter(movie => isWithinYearRange(movie.release_year, persona));
 
         const deduped: AiRecommendedMovie[] = [];
         const seen = new Set<string>();
@@ -884,13 +1094,13 @@ export async function POST(req: Request) {
         if (curatedMovies.length < MOVIES_NUMBER_LIMIT) {
             const needed = MOVIES_NUMBER_LIMIT - curatedMovies.length;
             const repairs = await repairMovies({
-                curator,
+                curator: persona,
                 selected,
                 need: needed,
                 bannedTitles,
                 moodRules: activeMoodRules,
             });
-            const repairFiltered = repairs.filter(movie => isWithinYearRange(movie?.release_year, curator));
+            const repairFiltered = repairs.filter(movie => isWithinYearRange(movie?.release_year, persona));
             const repairDeduped = repairFiltered.filter(movie => {
                 const key = normalizeTitle(movie.title);
                 if (seen.has(key)) return false;
@@ -917,14 +1127,14 @@ export async function POST(req: Request) {
             const need = MOVIES_NUMBER_LIMIT - enrichedList.length;
             bannedTitles = [...bannedTitles, ...enrichedList.map(movie => normalizeTitle(movie.title))];
             const repairs = await repairMovies({
-                curator,
+                curator: persona,
                 selected,
                 need,
                 bannedTitles,
                 moodRules: activeMoodRules,
             });
             const filteredRepairs = repairs
-                .filter(movie => isWithinYearRange(movie.release_year, curator))
+                .filter(movie => isWithinYearRange(movie.release_year, persona))
                 .filter(movie => {
                     const key = normalizeTitle(movie.title);
                     return !(seen.has(key) || bannedTitles.includes(key));
@@ -941,10 +1151,10 @@ export async function POST(req: Request) {
             fallbackAlternatives = enrichedList.slice(1);
         }
 
-        const tasteAdjustedList = curator.tasteBand === 'popcorn'
+        const tasteAdjustedList = persona.tasteBand === 'popcorn'
             ? await enforcePopcornBias({
                   movies: [resolvedPrimary, ...fallbackAlternatives].filter(Boolean) as AiRecommendedMovie[],
-                  curator,
+                  curator: persona,
                   selected,
                   previousTitles,
                   moodRules: activeMoodRules,
@@ -969,14 +1179,14 @@ export async function POST(req: Request) {
                 const baseList = tasteAdjustedList.filter(movie => !replaceSet.has(normalizeTitle(movie.title)));
                 const avoided = Array.from(new Set([...bannedTitles, ...Array.from(replaceSet)]));
                 const repairs = await repairMoodMovies({
-                    curator,
+                    curator: persona,
                     selected,
                     replaceTitles,
                     bannedTitles: avoided,
                     moodRules: activeMoodRules,
                 });
-                const filteredRepairs = repairs
-                    .filter(movie => isWithinYearRange(movie.release_year, curator))
+            const filteredRepairs = repairs
+                    .filter(movie => isWithinYearRange(movie.release_year, persona))
                     .filter(movie => {
                         const key = normalizeTitle(movie.title);
                         if (replaceSet.has(key)) return true;
@@ -1004,12 +1214,13 @@ export async function POST(req: Request) {
 
         const payload: CuratorRecommendationResponse = {
             curator: {
-                id: curator.id,
-                name: curator.name,
-                emoji: curator.emoji,
+                id: persona.id,
+                name: persona.name,
+                emoji: persona.emoji,
             },
             primary: resolvedPrimary,
             alternatives: fallbackAlternatives,
+            curator_note: curator_note,
         };
 
         return NextResponse.json(payload, { status: 200 });

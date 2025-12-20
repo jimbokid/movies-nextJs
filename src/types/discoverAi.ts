@@ -18,6 +18,7 @@ export interface CuratorPersona {
     examplesAvoid: string[];
     personaBias?: string;
     minYear: number;
+    preferredStartYear?: number;
     maxYear?: number;
 }
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useMemo } from 'react';
 import { AiRecommendedMovie } from '@/types/discoverAi';
-import { RefinePreset } from '@/types/curator';
+import { RefineMode } from '@/types/curator';
 import CuratorLoading, { CuratorLoadingMode } from './CuratorLoading';
 
 type CuratedPick = (AiRecommendedMovie & { locked?: boolean; expanded?: boolean }) | null;
@@ -13,8 +13,8 @@ interface CuratorResultsProps {
     primary: CuratedPick;
     alternatives: CuratedPick[];
     status: 'idle' | 'loading' | 'ready' | 'error';
-    onRefine: (preset: RefinePreset) => void;
-    activePreset?: RefinePreset;
+    onRefine: (preset: RefineMode) => void;
+    activePreset?: RefineMode;
     onEdit: () => void;
     onNewSession: () => void;
     mode?: CuratorLoadingMode;
@@ -28,13 +28,12 @@ interface CuratorResultsProps {
     curatorNote?: string | null;
 }
 
-const refineOptions: { label: string; preset: RefinePreset }[] = [
+const refineOptions: { label: string; preset: RefineMode }[] = [
+    { label: 'More dark', preset: 'more_dark' },
     { label: 'More fun', preset: 'more_fun' },
-    { label: 'Darker', preset: 'darker' },
-    { label: 'More mainstream', preset: 'more_mainstream' },
-    { label: 'More indie', preset: 'more_indie' },
-    { label: 'Only newer (2015+)', preset: 'only_newer' },
-    { label: 'Surprise me', preset: 'surprise' },
+    { label: 'Cozy', preset: 'more_cozy' },
+    { label: 'Weird / offbeat', preset: 'more_weird' },
+    { label: 'More action', preset: 'more_action' },
 ];
 
 function truncateNote(note?: string | null) {
@@ -211,7 +210,6 @@ export default function CuratorResults({
                                     pick={primary}
                                     priority
                                     onLock={() => onLock('primary', 0)}
-                                    onExplain={() => onExplain('primary', 0)}
                                     onSwap={() => onSwap('primary', 0)}
                                     swapping={swapTarget?.role === 'primary'}
                                 />
@@ -262,7 +260,6 @@ export default function CuratorResults({
                                             key={`${movie?.title ?? 'alt'}-${idx}`}
                                             pick={movie}
                                             onLock={() => onLock('alternative', idx)}
-                                            onExplain={() => onExplain('alternative', idx)}
                                             onSwap={() => onSwap('alternative', idx)}
                                             swapping={swapTarget?.role === 'alternative' && swapTarget.index === idx}
                                         />
@@ -284,7 +281,7 @@ export default function CuratorResults({
                         <p className="text-sm text-amber-200">Something went wrong. Try again.</p>
                         <button
                             type="button"
-                            onClick={() => onRefine(activePreset ?? 'surprise')}
+                            onClick={() => onRefine(activePreset ?? 'more_fun')}
                             className="rounded-full border border-white/10 px-4 py-2 text-xs text-white hover:border-purple-300/60"
                         >
                             Retry

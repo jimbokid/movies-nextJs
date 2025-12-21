@@ -9,7 +9,7 @@ import {
     CuratorRecommendationResponse,
     CuratorSelection,
     CuratorSession,
-    RefinePreset,
+    RefineMode,
 } from '@/types/curator';
 import { AiRecommendedMovie, CuratorPersona, CuratorId } from '@/types/discoverAi';
 import { readLocalStorage, writeLocalStorage } from '@/utils/storage';
@@ -62,7 +62,7 @@ export function useCuratorSession() {
         buildDefaultToggles(),
     );
     const [result, setResult] = useState<CuratorRecommendationResponse | null>(null);
-    const [refinePreset, setRefinePreset] = useState<RefinePreset | undefined>(undefined);
+    const [refinePreset, setRefinePreset] = useState<RefineMode | undefined>(undefined);
     const [lineupPrimary, setLineupPrimary] = useState<CuratedPick | null>(null);
     const [lineupAlternatives, setLineupAlternatives] = useState<CuratedPick[]>([]);
     const [sessions, setSessions] = useState<CuratorSession[]>([]);
@@ -249,7 +249,7 @@ export function useCuratorSession() {
     };
 
     const startSession = useCallback(
-        async (preset?: RefinePreset) => {
+        async (preset?: RefineMode) => {
             if (!selectedCurator || !canStartSession) return;
 
             cancelInFlight();
@@ -271,7 +271,7 @@ export function useCuratorSession() {
                     body: JSON.stringify({
                         curatorId: selectedCurator.id,
                         selected: curatedSelections,
-                        refinePreset: usePreset,
+                        refineMode: usePreset,
                         previousTitles: buildPreviousTitles(),
                         lockedTitles: collectCurrentTitles(),
                         rejectedTitles,
@@ -378,7 +378,7 @@ export function useCuratorSession() {
                 body: JSON.stringify({
                     curatorId: selectedCurator.id,
                     selected: curatedSelections,
-                    refinePreset,
+                    refineMode: refinePreset,
                     previousTitles: buildPreviousTitles(),
                     lockedTitles: collectCurrentTitles().filter(title => {
                         if (role === 'primary' && lineupPrimary?.title === title) return false;

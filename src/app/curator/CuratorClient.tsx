@@ -7,6 +7,7 @@ import CuratorResults from '@/components/curator/CuratorResults';
 import CuratorSessionsDrawer from '@/components/curator/CuratorSessionsDrawer';
 import useCuratorSession from '@/hooks/useCuratorSession';
 import { CURATOR_PERSONAS } from '@/data/curators';
+import { CuratorId } from '@/types/discoverAi';
 
 const cardVariants = {
     initial: { opacity: 0, y: 8 },
@@ -53,12 +54,12 @@ function CuratorCard({
     onSelect,
     disabled,
 }: {
-    id: string;
+    id: CuratorId;
     name: string;
     emoji: string;
     description: string;
     selected: boolean;
-    onSelect: (id: string) => void;
+    onSelect: (id: CuratorId) => void;
     disabled?: boolean;
 }) {
     return (
@@ -202,9 +203,6 @@ export default function CuratorClient() {
         refinePreset,
         lineupPrimary,
         lineupAlternatives,
-        toggleLock,
-        handleSwap,
-        swapTarget,
         sessions,
         openHistory,
         closeHistory,
@@ -218,7 +216,7 @@ export default function CuratorClient() {
     const contextSummary = useMemo(
         () =>
             curatedSelections.length
-                ? curatedSelections.map(item => `${item.label} (${item.category})`).join(' • ')
+                ? curatedSelections.map(item => `${item.label}`).join(' • ')
                 : 'Light context recommended',
         [curatedSelections],
     );
@@ -643,9 +641,6 @@ export default function CuratorClient() {
                             curatorName={selectedCurator?.name}
                             loadingMessage={loadingMessage}
                             thinkingLines={thinkingLines}
-                            onLock={toggleLock}
-                            onSwap={handleSwap}
-                            swapTarget={swapTarget}
                             curatorNote={result?.curator_note ?? null}
                         />
                     )}

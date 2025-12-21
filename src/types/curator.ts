@@ -42,13 +42,25 @@ export interface CuratorRecommendationResponse {
     replacementRole?: 'primary' | 'alternative';
 }
 
-export type RefinePreset =
-    | 'more_fun'
-    | 'darker'
-    | 'more_mainstream'
-    | 'more_indie'
-    | 'only_newer'
-    | 'surprise';
+export type RefineMode = 'more_dark' | 'more_fun' | 'more_cozy' | 'more_weird' | 'more_action';
+
+export type RefineStrategy = 'blend' | 'override';
+
+export type RatingMode = 'strict' | 'soft' | 'ignore';
+
+export type RefinePolicy = {
+    mode: RefineMode;
+    label: string;
+    strategy: RefineStrategy;
+    intensity: 'low' | 'medium' | 'high';
+    toneRules: string[];
+    hardAvoid: string[];
+    allowedGenres?: string[];
+    avoidGenres?: string[];
+    ratingMode: RatingMode;
+    minRating?: number;
+    maxYearWindowBias?: 'newer' | 'balanced';
+};
 
 export interface CuratorSession {
     id: string;
@@ -56,6 +68,6 @@ export interface CuratorSession {
     curatorId: CuratorId;
     selectedBadges: CuratorSelection[];
     context?: Record<string, unknown>;
-    refinePreset?: RefinePreset;
+    refinePreset?: RefineMode;
     result: CuratorRecommendationResponse;
 }

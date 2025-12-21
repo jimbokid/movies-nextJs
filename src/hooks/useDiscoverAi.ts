@@ -88,17 +88,6 @@ export function useDiscoverAi() {
         return withSelections;
     }, [availableBadges, selected]);
 
-    useEffect(() => {
-        if (recommendations.length > 0 && !loading) {
-            setTimeout(() => {
-                resultsRef.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                });
-            }, 200);
-        }
-    }, [recommendations, loading]);
-
     const selectionLimit = mode === 'all' ? 10 : 3;
     const canRecommend = mode === 'all' ? selected.length > 0 : selected.length === 3;
 

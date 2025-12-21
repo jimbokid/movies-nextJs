@@ -205,7 +205,7 @@ export default function DiscoverAiPage() {
                             }`}
                         >
                             {loading ? (
-                                <div className="flex items-center gap-3 text-white">
+                                <div className="flex items-center gap-3 text-white justify-center">
                                     <motion.span
                                         className="h-5 w-5 rounded-full border-2 border-white/60 border-t-transparent"
                                         animate={{ rotate: 360 }}
@@ -218,7 +218,7 @@ export default function DiscoverAiPage() {
                                     <div className="flex flex-col leading-tight">Working</div>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3 text-white">
+                                <div className="flex items-center gap-3 text-white justify-center">
                                     <div className="flex flex-col leading-tight">
                                         Get recommendations
                                     </div>

@@ -28,8 +28,8 @@ export const CURATOR_PERSONAS: CuratorPersona[] = [
         description:
             'Warm, no-fuss recommendations that feel like a friend insisting you trust them on this one.',
         tasteBand: 'popcorn',
-        minYear: 2010,
-        preferredStartYear: 2012,
+        minYear: 2000,
+        preferredStartYear: 2005,
         allowedGenres: [
             'action',
             'street racing',

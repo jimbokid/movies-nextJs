@@ -2,9 +2,17 @@ import axios from 'axios';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { AiRecommendedMovie, CuratorPersona } from '@/types/discoverAi';
-import { CuratorRecommendationResponse, CuratorSelection, RefineMode, RefinePolicy, RefineStrategy, RatingMode } from '@/types/curator';
+import {
+    CuratorRecommendationResponse,
+    CuratorSelection,
+    RatingMode,
+    RefineMode,
+    RefinePolicy,
+    RefineStrategy,
+} from '@/types/curator';
 import { CURATOR_PERSONAS } from '@/data/curators';
 import { getActiveMoodRules, MoodRule } from './moodRules';
+import { REFINE_POLICIES } from '@/constants/curatorThinking';
 
 interface RequestBody {
     curatorId?: CuratorPersona['id'];
@@ -14,7 +22,6 @@ interface RequestBody {
     mode?: 'full' | 'swap_primary' | 'swap_alternative';
     lockedTitles?: string[];
     rejectedTitles?: string[];
-    swappedTitles?: string[];
     targetTitle?: string;
     moodDrift?: {
         funSerious?: number;
@@ -101,87 +108,10 @@ function isRefineMode(value: unknown): value is RefineMode {
     );
 }
 
-const REFINE_POLICIES: Record<RefineMode, RefinePolicy> = {
-    more_dark: {
-        mode: 'more_dark',
-        label: 'More dark',
-        strategy: 'override',
-        intensity: 'high',
-        toneRules: [
-            'Bleak, disturbing, intense, dread-filled. No playful or cozy tones.',
-            'Prioritize psychological horror, bleak thrillers, disturbing dramas, revenge and crime, nihilistic sci-fi.',
-            "Avoid anything described as 'dark but fun' or adventure-forward.",
-        ],
-        hardAvoid: [
-            'family-friendly',
-            'playful',
-            'nostalgic adventure',
-            'animated kids movies',
-            'lighthearted action comedy',
-            'Lego',
-            'Pixar',
-            'feel-good',
-        ],
-        allowedGenres: ['horror', 'thriller', 'crime', 'drama', 'sci-fi'],
-        avoidGenres: ['family', 'animation', 'adventure', 'comedy'],
-        ratingMode: 'ignore',
-        maxYearWindowBias: 'balanced',
-    },
-    more_fun: {
-        mode: 'more_fun',
-        label: 'More fun',
-        strategy: 'blend',
-        intensity: 'medium',
-        toneRules: ['Lean into playful, energetic, crowd-pleasing picks.', 'Avoid bleak dramas.'],
-        hardAvoid: ['slow cinema', 'experimental', 'bleak', 'nihilistic', 'trauma-focused'],
-        allowedGenres: ['comedy', 'action', 'adventure'],
-        avoidGenres: ['extreme horror'],
-        ratingMode: 'soft',
-        minRating: 6,
-        maxYearWindowBias: 'newer',
-    },
-    more_cozy: {
-        mode: 'more_cozy',
-        label: 'Cozy',
-        strategy: 'blend',
-        intensity: 'low',
-        toneRules: ['Comforting, warm, low-stakes tone.', 'No disturbing or brutal content.'],
-        hardAvoid: ['bleak', 'disturbing', 'torture', 'nihilistic'],
-        allowedGenres: ['romance', 'dramedy', 'animation', 'slice of life'],
-        ratingMode: 'soft',
-        minRating: 6.3,
-        maxYearWindowBias: 'newer',
-    },
-    more_weird: {
-        mode: 'more_weird',
-        label: 'Weird / offbeat',
-        strategy: 'override',
-        intensity: 'high',
-        toneRules: [
-            'Allow surreal, eccentric, genre-bending picks.',
-            'It is okay to include polarizing cult titles.',
-        ],
-        hardAvoid: ['formulaic crowd-pleasers', 'overly familiar franchises'],
-        allowedGenres: ['horror', 'sci-fi', 'fantasy', 'arthouse'],
-        ratingMode: 'soft',
-        minRating: 5.5,
-        maxYearWindowBias: 'balanced',
-    },
-    more_action: {
-        mode: 'more_action',
-        label: 'More action',
-        strategy: 'blend',
-        intensity: 'medium',
-        toneRules: ['Action-forward pacing and set pieces first.', 'Avoid slow, talky dramas.'],
-        hardAvoid: ['quiet character studies', 'minimalist drama'],
-        allowedGenres: ['action', 'thriller', 'crime', 'sci-fi'],
-        ratingMode: 'soft',
-        minRating: 6,
-        maxYearWindowBias: 'newer',
-    },
+const DEFAULT_RATING_POLICY: { mode: RatingMode; minRating: number } = {
+    mode: 'soft',
+    minRating: 6.2,
 };
-
-const DEFAULT_RATING_POLICY: { mode: RatingMode; minRating: number } = { mode: 'soft', minRating: 6.2 };
 
 function normalizeTitleArray(list: unknown[]): string[] {
     return Array.isArray(list)
@@ -224,8 +154,10 @@ function isPopcornEnough(movies: AiRecommendedMovie[]) {
 }
 
 function isPopularEnough(movie: AiRecommendedMovie) {
-    const hasVote = typeof movie.vote_average === 'number' && movie.vote_average >= VOTE_AVERAGE_THRESHOLD;
-    const hasPopularity = typeof movie.popularity === 'number' && movie.popularity >= POPULARITY_THRESHOLD;
+    const hasVote =
+        typeof movie.vote_average === 'number' && movie.vote_average >= VOTE_AVERAGE_THRESHOLD;
+    const hasPopularity =
+        typeof movie.popularity === 'number' && movie.popularity >= POPULARITY_THRESHOLD;
     return hasVote || hasPopularity;
 }
 
@@ -289,7 +221,10 @@ function validateMoodFit(movies: AiRecommendedMovie[], rules: MoodRule[]) {
 }
 
 function sanitizeJsonString(content: string): string {
-    const withoutFences = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const withoutFences = content
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
     const firstBrace = withoutFences.search(/[\[{]/);
     if (firstBrace === -1) return withoutFences;
 
@@ -433,11 +368,7 @@ async function searchTmdbMovie(title: string, releaseYear?: number): Promise<Tmd
 
         if (results.length === 0) return null;
 
-        const exactYearMatch = releaseYear
-            ? results.find(movie => movie.release_date?.startsWith(String(releaseYear)))
-            : null;
-
-        return exactYearMatch ?? results[0];
+        return results[0];
     } catch (error) {
         console.error('TMDB lookup failed', error);
         return null;
@@ -462,15 +393,21 @@ async function enrichMovie(movie: AiRecommendedMovie): Promise<AiRecommendedMovi
         ...movie,
         tmdb_id: meta.id,
         poster_path: meta.poster_path ?? movie.poster_path,
-        release_year: movie.release_year ?? (Number.isFinite(releaseYearFromMeta) ? releaseYearFromMeta : undefined),
+        release_year:
+            movie.release_year ??
+            (Number.isFinite(releaseYearFromMeta) ? releaseYearFromMeta : undefined),
         overview: meta.overview ?? movie.overview,
-        vote_average: typeof meta.vote_average === 'number' ? meta.vote_average : movie.vote_average,
+        vote_average:
+            typeof meta.vote_average === 'number' ? meta.vote_average : movie.vote_average,
         genre_ids: Array.isArray(meta.genre_ids) ? meta.genre_ids : movie.genre_ids,
         popularity: typeof meta.popularity === 'number' ? meta.popularity : movie.popularity,
     };
 }
 
-async function enrichRecommendations(primary: AiRecommendedMovie | null, alternatives: AiRecommendedMovie[]) {
+async function enrichRecommendations(
+    primary: AiRecommendedMovie | null,
+    alternatives: AiRecommendedMovie[],
+) {
     const enrichedPrimary = primary ? await enrichMovie(primary) : null;
     const enrichedAlternatives = await Promise.all(alternatives.map(enrichMovie));
     const validAlternatives = enrichedAlternatives.filter(Boolean) as AiRecommendedMovie[];
@@ -537,35 +474,33 @@ function buildMoodDriftText(moodDrift?: RequestBody['moodDrift']) {
 function buildPersonaRules(curator: CuratorPersona, moodRules: MoodRule[]) {
     const anchors = [
         curator.personaBias ? `Persona bias: ${curator.personaBias}.` : '',
-        curator.allowedGenres?.length ? `Prefer genres like ${curator.allowedGenres.join(', ')}.` : '',
+        curator.allowedGenres?.length
+            ? `Prefer genres like ${curator.allowedGenres.join(', ')}.`
+            : '',
         curator.avoidGenres?.length ? `Avoid genres like ${curator.avoidGenres.join(', ')}.` : '',
-        curator.examplesGood.length ? `Output should feel like: ${curator.examplesGood.join(', ')}.` : '',
-        curator.examplesAvoid.length ? `Avoid leaning toward: ${curator.examplesAvoid.join(', ')}.` : '',
+        curator.examplesGood.length
+            ? `Output should feel like: ${curator.examplesGood.join(', ')}.`
+            : '',
+        curator.examplesAvoid.length
+            ? `Avoid leaning toward: ${curator.examplesAvoid.join(', ')}.`
+            : '',
     ]
         .filter(Boolean)
         .join('\n');
 
     switch (curator.tasteBand) {
         case 'popcorn':
-            return (
-                `${anchors}\nYou are not a critic. Pick crowd-pleasers with big franchises, popular comedies, early 2000s energy, buddy cops, street racing, guilty pleasures, and weekend fun. Favor mainstream action/comedy/crime/adventure/thriller vibes. You are recommending for a regular guy who wants fun, fast, mainstream movies. Prefer box-office hits, franchises, viral or widely known films. Avoid slow, artsy, experimental, or festival-style movies. If unsure, choose the more popular option. ${
-                    moodRules.length
-                        ? 'For fun/comfort vibes, lean extra hard into mainstream comedies, action-comedies, feel-good crowd-pleasers—no prestige crime unless the user explicitly asked for dark/crime.'
-                        : ''
-                }`
-            );
+            return `${anchors}\nYou are not a critic. Pick crowd-pleasers with big franchises, popular comedies, early 2000s energy, buddy cops, street racing, guilty pleasures, and weekend fun. Favor mainstream action/comedy/crime/adventure/thriller vibes. You are recommending for a regular guy who wants fun, fast, mainstream movies. Prefer box-office hits, franchises, viral or widely known films. Avoid slow, artsy, experimental, or festival-style movies. If unsure, choose the more popular option. ${
+                moodRules.length
+                    ? 'For fun/comfort vibes, lean extra hard into mainstream comedies, action-comedies, feel-good crowd-pleasers—no prestige crime unless the user explicitly asked for dark/crime.'
+                    : ''
+            }`;
         case 'auteur':
-            return (
-                `${anchors}\nLean into director-forward, cinematic voices (think Tarantino/Villeneuve/Lynch adjacent). Use confident tone, bold opinions, and keep choices recognizable and muscular.`
-            );
+            return `${anchors}\nLean into director-forward, cinematic voices (think Tarantino/Villeneuve/Lynch adjacent). Use confident tone, bold opinions, and keep choices recognizable and muscular.`;
         case 'indie':
-            return (
-                `${anchors}\nFavor recognizable festival-friendly indie energy (A24/Neon vibes), emotional textures, international voices, and thoughtful storytelling—still mainstream enough to be findable.`
-            );
+            return `${anchors}\nFavor recognizable festival-friendly indie energy (A24/Neon vibes), emotional textures, international voices, and thoughtful storytelling—still mainstream enough to be findable.`;
         case 'film_school':
-            return (
-                `${anchors}\nSound analytical yet approachable—contextualize movements and influence. Include at most one modern canon/classic per list, keep everything watchable and engaging.`
-            );
+            return `${anchors}\nSound analytical yet approachable—contextualize movements and influence. Include at most one modern canon/classic per list, keep everything watchable and engaging.`;
         default:
             return anchors;
     }
@@ -577,7 +512,6 @@ function buildBasePrompt({
     previousTitles,
     lockedTitles,
     rejectedTitles,
-    swappedTitles,
     moodDrift,
     mode,
     targetTitle,
@@ -590,7 +524,6 @@ function buildBasePrompt({
     previousTitles: string[];
     lockedTitles: string[];
     rejectedTitles: string[];
-    swappedTitles: string[];
     moodDrift?: RequestBody['moodDrift'];
     mode: RequestBody['mode'];
     targetTitle?: string;
@@ -604,9 +537,7 @@ function buildBasePrompt({
     const moodDriftText = buildMoodDriftText(moodDrift);
     const personaText = buildPersonaRules(curator, moodRules);
     const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
-    const avoidTitles = Array.from(
-        new Set([...previousTitles, ...lockedTitles, ...rejectedTitles, ...swappedTitles]),
-    )
+    const avoidTitles = Array.from(new Set([...previousTitles, ...lockedTitles, ...rejectedTitles]))
         .slice(0, PREVIOUS_TITLES_MAX)
         .join(', ');
     const avoidLines = avoidTitles
@@ -635,16 +566,15 @@ function buildBasePrompt({
         `${swapText}\n` +
         `${avoidLines}\n` +
         `Recommend exactly ${need} films total. Only include films released between ${curator.minYear} and ${maxYear}. If any title falls outside this window, replace it. Prefer ${preferredStart} or newer when possible. ` +
-        `Movies must be recognizable/popular (no ultra-underground festival-only picks). Keep variety across decades and genres and avoid repeating the same director twice unless essential. ` +
-        `Avoid repeating classic canon defaults every session (e.g., Fight Club, Shawshank, Inception) and avoid ultra-niche or hard-to-find titles. Do-not-pick list based on mood is already in constraints; respect it. ` +
+        // `Movies must be recognizable/popular (no ultra-underground festival-only picks). Keep variety across decades and genres and avoid repeating the same director twice unless essential. ` +
+        // `Avoid repeating classic canon defaults every session (e.g., Fight Club, Shawshank, Inception) and avoid ultra-niche or hard-to-find titles. Do-not-pick list based on mood is already in constraints; respect it. ` +
         `Prefer movies with strong TMDB presence and widely available/streamable options when possible. ` +
         `IMPORTANT OUTPUT RULES:\n` +
         `- Do NOT add explanations outside JSON.\n` +
         `- Do NOT exceed sentence limits.\n\n` +
-        `Return JSON with fields: {"primary": Movie, "alternatives": Movie[], "curator_note"?: string} where Movie = {"title": string, "release_year": number, "reason"?: string}. ` +
+        `Return JSON with fields: {"primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year": number}. ` +
         `Ensure at least ${ALTERNATIVE_TARGET_MIN} and at most ${ALTERNATIVE_TARGET_MAX} alternatives and exactly ${PRIMARY_TARGET} primary pick. ` +
         `Include at least one unconventional choice within mainstream/recognizable bounds, prefer diversity by decade and country when relevant, and penalize repeats from prior sessions. ` +
-        `Curator_note must be 1-2 sentences only.\n` +
         `If unsure, choose the more mainstream option. Respond with raw JSON only—no markdown, no commentary.${strict ? ' Output strictly valid JSON.' : ''}`
     );
 }
@@ -656,7 +586,6 @@ function buildRefinePrompt({
     previousTitles,
     lockedTitles,
     rejectedTitles,
-    swappedTitles,
     mode,
     targetTitle,
     need,
@@ -669,7 +598,6 @@ function buildRefinePrompt({
     previousTitles: string[];
     lockedTitles: string[];
     rejectedTitles: string[];
-    swappedTitles: string[];
     mode: RequestBody['mode'];
     targetTitle?: string;
     need: number;
@@ -680,14 +608,13 @@ function buildRefinePrompt({
     const preferredStart =
         policy.maxYearWindowBias === 'newer'
             ? Math.max(curator.preferredStartYear ?? curator.minYear, CURRENT_YEAR - 10)
-            : curator.preferredStartYear ?? Math.max(curator.minYear, 1995);
+            : (curator.preferredStartYear ?? Math.max(curator.minYear, 1995));
     const contextLines = selected.map(item => `- ${item.label} (${item.category})`).join('\n');
     const avoidTitles = Array.from(
         new Set([
             ...previousTitles,
             ...lockedTitles,
             ...rejectedTitles,
-            ...swappedTitles,
             ...(rejectedTooLight ?? []),
         ]),
     )
@@ -714,8 +641,12 @@ function buildRefinePrompt({
         `Refine intent: ${policy.label}. Strategy: ${policy.strategy}.`,
         `Tone rules (must follow):`,
         ...policy.toneRules.map(rule => `- ${rule}`),
-        policy.hardAvoid.length ? `Hard avoid themes/keywords: ${policy.hardAvoid.join(', ')}.` : '',
-        policy.allowedGenres?.length ? `Allowed/encouraged genres: ${policy.allowedGenres.join(', ')}.` : '',
+        policy.hardAvoid.length
+            ? `Hard avoid themes/keywords: ${policy.hardAvoid.join(', ')}.`
+            : '',
+        policy.allowedGenres?.length
+            ? `Allowed/encouraged genres: ${policy.allowedGenres.join(', ')}.`
+            : '',
         policy.avoidGenres?.length ? `Avoid genres: ${policy.avoidGenres.join(', ')}.` : '',
         policy.ratingMode === 'ignore'
             ? 'Do NOT filter out low-rated titles; polarizing picks are allowed.'
@@ -733,9 +664,8 @@ function buildRefinePrompt({
         `No playful, cozy, nostalgic, family-friendly, comedic, or adventure-forward picks for dark modes. Do not include "dark but fun" action comedies. ` +
         `IMPORTANT OUTPUT RULES:\n` +
         `- Do NOT add explanations outside JSON.\n` +
-        `- Return JSON only with fields: {"primary": Movie, "alternatives": Movie[], "curator_note"?: string} where Movie = {"title": string, "release_year": number, "reason"?: string}.\n` +
+        `- Return JSON only with fields: {"primary": Movie, "alternatives": Movie[]} where Movie = {"title": string, "release_year": number}.\n` +
         `- Ensure exactly ${PRIMARY_TARGET} primary and between ${ALTERNATIVE_TARGET_MIN}-${ALTERNATIVE_TARGET_MAX} alternatives.\n` +
-        `- Curator_note must be 1-2 sentences only.\n` +
         `- Respond with raw JSON only—no markdown, no commentary.`
     );
 }
@@ -743,12 +673,10 @@ function buildRefinePrompt({
 async function requestCuratorBatch({
     curator,
     userPrompt,
-    strict,
     strategy,
 }: {
     curator: CuratorPersona;
     userPrompt: string;
-    strict?: boolean;
     strategy?: RefineStrategy;
 }) {
     const completion = await openai!.chat.completions.create({
@@ -760,8 +688,7 @@ async function requestCuratorBatch({
                 content:
                     'You are an AI movie curator. Always respond with strict JSON and never include markdown or code fences. ' +
                     `${strategy === 'override' ? 'Ignore previous persona preferences if they conflict with refine intent. ' : 'Enforce persona tone in notes. '}` +
-                    `Only include movies released between ${curator.minYear} and ${curator.maxYear ?? CURRENT_YEAR} and prefer modern picks. ` +
-                    'Include a curator_note field that is 1-2 sentences only.',
+                    `Only include movies released between ${curator.minYear} and ${curator.maxYear ?? CURRENT_YEAR} and prefer modern picks. `,
             },
             { role: 'user', content: userPrompt },
         ],
@@ -790,7 +717,7 @@ async function repairMovies({
             curator.maxYear ?? CURRENT_YEAR
         } (prefer modern picks). ` +
         `${moodRuleText}\n` +
-        `Movies must be recognizable/popular and not obscure. Avoid repeating any of these titles: ${avoidList}. ` +
+        `Avoid repeating any of these titles: ${avoidList}. ` +
         `Stay consistent with the ${curator.name} persona: ${curator.personaBias ?? curator.promptStyle}. If unsure, choose the more mainstream option. ` +
         `No markdown, no code fences.`;
 
@@ -800,8 +727,7 @@ async function repairMovies({
         messages: [
             {
                 role: 'system',
-                content:
-                    `You are ${curator.name} ${curator.emoji}. Respond only with JSON arrays of movie objects {"title": string, "release_year": number, "reason"?: string}.`,
+                content: `You are ${curator.name} ${curator.emoji}. Respond only with JSON arrays of movie objects {"title": string, "release_year": number, "reason"?: string}.`,
             },
             { role: 'user', content: userPrompt },
         ],
@@ -1041,7 +967,10 @@ async function enforcePopcornBias({
             const fallbackShortage = replaceCount - validRepairs.length;
             const fallbackMovies = fallbackShortage > 0 ? weak.slice(0, fallbackShortage) : [];
 
-            workingList = [...baseList, ...validRepairs, ...fallbackMovies].slice(0, MOVIES_NUMBER_LIMIT);
+            workingList = [...baseList, ...validRepairs, ...fallbackMovies].slice(
+                0,
+                MOVIES_NUMBER_LIMIT,
+            );
         }
     }
 
@@ -1088,9 +1017,7 @@ async function enforcePopcornBias({
     const fallbackShortage = replaceCount - validRepairs.length;
     const fallbackMovies = fallbackShortage > 0 ? notPopcorn.slice(0, fallbackShortage) : [];
 
-    const merged = [...baseList, ...validRepairs, ...fallbackMovies].slice(0, MOVIES_NUMBER_LIMIT);
-
-    return merged;
+    return [...baseList, ...validRepairs, ...fallbackMovies].slice(0, MOVIES_NUMBER_LIMIT);
 }
 
 function applyRatingPolicy(
@@ -1110,8 +1037,7 @@ function applyRatingPolicy(
         return { kept, removed };
     }
 
-    const sorted = [...movies].sort((a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0));
-    const kept = sorted.slice(0, limit);
+    const kept = movies.slice(0, limit);
     const keptTitles = new Set(kept.map(movie => normalizeTitle(movie.title)));
     const removed = movies.filter(movie => !keptTitles.has(normalizeTitle(movie.title)));
     return { kept, removed };
@@ -1120,8 +1046,28 @@ function applyRatingPolicy(
 function isTooLightForDark(overview?: string) {
     if (!overview) return false;
     const text = overview.toLowerCase();
-    const rejectKeywords = ['family', 'kids', 'heartwarming', 'friendship', 'hilarious', 'adventure', 'magical', 'animated'];
-    const acceptKeywords = ['murder', 'serial killer', 'abduction', 'trauma', 'revenge', 'disturbing', 'nihilistic', 'dread', 'haunting', 'psychological'];
+    const rejectKeywords = [
+        'family',
+        'kids',
+        'heartwarming',
+        'friendship',
+        'hilarious',
+        'adventure',
+        'magical',
+        'animated',
+    ];
+    const acceptKeywords = [
+        'murder',
+        'serial killer',
+        'abduction',
+        'trauma',
+        'revenge',
+        'disturbing',
+        'nihilistic',
+        'dread',
+        'haunting',
+        'psychological',
+    ];
 
     const hasAccept = acceptKeywords.some(keyword => text.includes(keyword));
     const hasReject = rejectKeywords.some(keyword => text.includes(keyword));
@@ -1156,18 +1102,22 @@ export async function POST(req: Request) {
     const previousTitles = normalizeTitleArray(body?.previousTitles ?? []);
     const lockedTitles = normalizeTitleArray(body?.lockedTitles ?? []);
     const rejectedTitles = normalizeTitleArray(body?.rejectedTitles ?? []);
-    const swappedTitles = normalizeTitleArray(body?.swappedTitles ?? []);
     const refineMode = isRefineMode(body?.refineMode) ? body?.refineMode : undefined;
     const refinePolicy = refineMode ? REFINE_POLICIES[refineMode] : null;
-    const mode: RequestBody['mode'] = body?.mode === 'swap_primary' || body?.mode === 'swap_alternative' ? body.mode : 'full';
+    const mode: RequestBody['mode'] =
+        body?.mode === 'swap_primary' || body?.mode === 'swap_alternative' ? body.mode : 'full';
     const targetTitle = typeof body?.targetTitle === 'string' ? body.targetTitle : undefined;
     const moodDrift = body?.moodDrift
         ? {
-              funSerious: Number.isFinite(body.moodDrift.funSerious) ? Math.max(-1, Math.min(1, Number(body.moodDrift.funSerious))) : 0,
+              funSerious: Number.isFinite(body.moodDrift.funSerious)
+                  ? Math.max(-1, Math.min(1, Number(body.moodDrift.funSerious)))
+                  : 0,
               mainstreamIndie: Number.isFinite(body.moodDrift.mainstreamIndie)
                   ? Math.max(-1, Math.min(1, Number(body.moodDrift.mainstreamIndie)))
                   : 0,
-              safeBold: Number.isFinite(body.moodDrift.safeBold) ? Math.max(-1, Math.min(1, Number(body.moodDrift.safeBold))) : 0,
+              safeBold: Number.isFinite(body.moodDrift.safeBold)
+                  ? Math.max(-1, Math.min(1, Number(body.moodDrift.safeBold)))
+                  : 0,
           }
         : undefined;
 
@@ -1176,7 +1126,10 @@ export async function POST(req: Request) {
     }
 
     const curator = CURATOR_PERSONAS.find(persona => persona.id === curatorId);
-    const activeMoodRules = refinePolicy?.strategy === 'override' ? [] : getActiveMoodRules(selected.map(choice => choice.label));
+    const activeMoodRules =
+        refinePolicy?.strategy === 'override'
+            ? []
+            : getActiveMoodRules(selected.map(choice => choice.label));
 
     if (!curator) {
         return NextResponse.json({ message: 'Unknown curator persona.' }, { status: 404 });
@@ -1185,10 +1138,10 @@ export async function POST(req: Request) {
     try {
         const personaMinYear = curator.minYear;
         const persona: CuratorPersona = { ...curator, minYear: personaMinYear };
-        const need = mode === 'swap_primary' || mode === 'swap_alternative' ? 1 : MOVIES_NUMBER_LIMIT;
+        const need =
+            mode === 'swap_primary' || mode === 'swap_alternative' ? 1 : MOVIES_NUMBER_LIMIT;
         let resolvedPrimary: AiRecommendedMovie | null = null;
         let fallbackAlternatives: AiRecommendedMovie[] = [];
-        let curator_note: string | undefined;
         let darkRetryUsed = false;
         let tooLightTitles: string[] = [];
 
@@ -1201,7 +1154,6 @@ export async function POST(req: Request) {
                       previousTitles,
                       lockedTitles,
                       rejectedTitles,
-                      swappedTitles,
                       mode,
                       targetTitle,
                       need,
@@ -1214,7 +1166,6 @@ export async function POST(req: Request) {
                       previousTitles,
                       lockedTitles,
                       rejectedTitles,
-                      swappedTitles,
                       moodDrift,
                       mode,
                       targetTitle,
@@ -1233,38 +1184,18 @@ export async function POST(req: Request) {
                 const strictContent = await requestCuratorBatch({
                     curator: persona,
                     userPrompt,
-                    strict: true,
                     strategy: refinePolicy?.strategy,
                 });
                 parsed = parseAiResponse(strictContent);
-            }
-
-            curator_note = parsed.curator_note;
-
-            if (mode === 'swap_primary' || mode === 'swap_alternative') {
-                const swapCandidate =
-                    mode === 'swap_primary' ? parsed.primary ?? parsed.alternatives[0] ?? null : parsed.alternatives[0] ?? parsed.primary ?? null;
-                const enrichedSwap = swapCandidate ? await enrichMovie(swapCandidate) : null;
-                const payload: CuratorRecommendationResponse = {
-                    curator: {
-                        id: persona.id,
-                        name: persona.name,
-                        emoji: persona.emoji,
-                    },
-                    primary: null,
-                    alternatives: [],
-                    curator_note: curator_note,
-                    replacement: enrichedSwap ?? null,
-                    replacementRole: mode === 'swap_primary' ? 'primary' : 'alternative',
-                };
-                return NextResponse.json(payload, { status: 200 });
             }
 
             const combined: AiRecommendedMovie[] = [];
             if (parsed.primary) combined.push(parsed.primary);
             combined.push(...parsed.alternatives);
 
-            const filtered = combined.filter(movie => isWithinYearRange(movie.release_year, persona));
+            const filtered = combined.filter(movie =>
+                isWithinYearRange(movie.release_year, persona),
+            );
 
             const deduped: AiRecommendedMovie[] = [];
             const seen = new Set<string>();
@@ -1277,7 +1208,10 @@ export async function POST(req: Request) {
             });
 
             let curatedMovies = deduped.slice(0, MOVIES_NUMBER_LIMIT);
-            let bannedTitles = [...previousTitles.map(normalizeTitle), ...curatedMovies.map(movie => normalizeTitle(movie.title))];
+            let bannedTitles = [
+                ...previousTitles.map(normalizeTitle),
+                ...curatedMovies.map(movie => normalizeTitle(movie.title)),
+            ];
 
             if (curatedMovies.length < MOVIES_NUMBER_LIMIT) {
                 const needed = MOVIES_NUMBER_LIMIT - curatedMovies.length;
@@ -1288,7 +1222,9 @@ export async function POST(req: Request) {
                     bannedTitles,
                     moodRules: activeMoodRules,
                 });
-                const repairFiltered = repairs.filter(movie => isWithinYearRange(movie?.release_year, persona));
+                const repairFiltered = repairs.filter(movie =>
+                    isWithinYearRange(movie?.release_year, persona),
+                );
                 const repairDeduped = repairFiltered.filter(movie => {
                     const key = normalizeTitle(movie.title);
                     if (seen.has(key)) return false;
@@ -1298,19 +1234,22 @@ export async function POST(req: Request) {
                 curatedMovies = [...curatedMovies, ...repairDeduped].slice(0, MOVIES_NUMBER_LIMIT);
             }
 
-            let { primary: enrichedPrimary, alternatives: enrichedAlternatives } = await enrichRecommendations(
-                curatedMovies[0] ?? null,
-                curatedMovies.slice(1),
-            );
+            const { primary: enrichedPrimary, alternatives: enrichedAlternatives } =
+                await enrichRecommendations(curatedMovies[0] ?? null, curatedMovies.slice(1));
 
             // Drop items that failed TMDB validation
             const validAlternatives = enrichedAlternatives.filter(Boolean);
-            let enrichedList = [enrichedPrimary, ...validAlternatives].filter(Boolean) as AiRecommendedMovie[];
+            let enrichedList = [enrichedPrimary, ...validAlternatives].filter(
+                Boolean,
+            ) as AiRecommendedMovie[];
 
             // Re-run repair if enrichment removed items
             if (enrichedList.length < MOVIES_NUMBER_LIMIT) {
                 const needMore = MOVIES_NUMBER_LIMIT - enrichedList.length;
-                bannedTitles = [...bannedTitles, ...enrichedList.map(movie => normalizeTitle(movie.title))];
+                bannedTitles = [
+                    ...bannedTitles,
+                    ...enrichedList.map(movie => normalizeTitle(movie.title)),
+                ];
                 const repairs = await repairMovies({
                     curator: persona,
                     selected,
@@ -1332,7 +1271,11 @@ export async function POST(req: Request) {
 
             if (refinePolicy?.mode === 'more_dark') {
                 const { kept, removed } = applyDarknessSanity(enrichedList);
-                if (removed.length && kept.length < PRIMARY_TARGET + ALTERNATIVE_TARGET_MIN && !darkRetryUsed) {
+                if (
+                    removed.length &&
+                    kept.length < PRIMARY_TARGET + ALTERNATIVE_TARGET_MIN &&
+                    !darkRetryUsed
+                ) {
                     tooLightTitles = removed.map(movie => movie.title);
                     darkRetryUsed = true;
                     continue;
@@ -1373,8 +1316,12 @@ export async function POST(req: Request) {
                         ? invalidTitles
                         : workingList.slice(-replaceCount).map(movie => movie.title);
                     const replaceSet = new Set(replaceTitles.map(normalizeTitle));
-                    const baseList = workingList.filter(movie => !replaceSet.has(normalizeTitle(movie.title)));
-                    const avoided = Array.from(new Set([...bannedTitles, ...Array.from(replaceSet)]));
+                    const baseList = workingList.filter(
+                        movie => !replaceSet.has(normalizeTitle(movie.title)),
+                    );
+                    const avoided = Array.from(
+                        new Set([...bannedTitles, ...Array.from(replaceSet)]),
+                    );
                     const repairs = await repairMoodMovies({
                         curator: persona,
                         selected,
@@ -1418,7 +1365,7 @@ export async function POST(req: Request) {
             },
             primary: resolvedPrimary,
             alternatives: fallbackAlternatives,
-            curator_note: curator_note,
+            curator_note: '',
         };
 
         return NextResponse.json(payload, { status: 200 });

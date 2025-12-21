@@ -6,8 +6,18 @@ export const CONTEXT_GROUPS: CuratorContextGroup[] = [
         title: 'Mood intention',
         description: 'Pick the emotional lane so your curator knows where to steer the vibe.',
         options: [
-            { id: 'emotional', label: 'Emotional', description: 'I want to feel something real.', category: 'mood_intention' },
-            { id: 'fun', label: 'Fun', description: 'Keep it playful and high-energy.', category: 'mood_intention' },
+            {
+                id: 'emotional',
+                label: 'Emotional',
+                description: 'I want to feel something real.',
+                category: 'mood_intention',
+            },
+            {
+                id: 'fun',
+                label: 'Fun',
+                description: 'Keep it playful and high-energy.',
+                category: 'mood_intention',
+            },
             {
                 id: 'challenging',
                 label: 'Challenging',
@@ -27,8 +37,18 @@ export const CONTEXT_GROUPS: CuratorContextGroup[] = [
         title: 'Time preference',
         description: 'How much runway do you have tonight?',
         options: [
-            { id: 'short', label: 'Quick watch', description: 'Tidy runtimes under 110 minutes.', category: 'time_preference' },
-            { id: 'any', label: 'Any length', description: 'I will go wherever the story needs.', category: 'time_preference' },
+            {
+                id: 'short',
+                label: 'Quick watch',
+                description: 'Tidy runtimes under 110 minutes.',
+                category: 'time_preference',
+            },
+            {
+                id: 'any',
+                label: 'Any length',
+                description: 'I will go wherever the story needs.',
+                category: 'time_preference',
+            },
             {
                 id: 'long',
                 label: 'Epic',

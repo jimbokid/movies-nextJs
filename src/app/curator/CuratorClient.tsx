@@ -96,10 +96,6 @@ function CuratorCard({
                 )}
             </div>
             <p className="text-sm text-gray-200/90 leading-relaxed">{description}</p>
-            <div className="flex items-center gap-2 text-xs text-purple-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
-                <span>Persona-first recommendations</span>
-            </div>
         </motion.button>
     );
 }
@@ -239,12 +235,6 @@ export default function CuratorClient() {
     const deepLinkAutostart = deepLinkContext?.autostart;
     const deepLinkCuratorId = deepLinkContext?.curatorId;
     const deepLinkRefine = deepLinkContext?.refine;
-    const deepLinkLabel = useMemo(() => {
-        if (!deepLinkContext) return null;
-        if (deepLinkContext.query) return `Loaded with search “${deepLinkContext.query}”`;
-        if (deepLinkContext.from) return `Opened from ${deepLinkContext.from}`;
-        return null;
-    }, [deepLinkContext]);
 
     useEffect(() => {
         const from = searchParams.get('from') ?? undefined;
@@ -339,12 +329,6 @@ export default function CuratorClient() {
                             Choose a persona, add quick context, and get a hero pick with bold
                             alternatives.
                         </p>
-                        {deepLinkLabel && (
-                            <div className="inline-flex items-center gap-2 rounded-full border border-purple-400/50 bg-purple-500/10 px-3 py-1 text-xs text-purple-100">
-                                <span aria-hidden>🎯</span>
-                                <span>{deepLinkLabel}</span>
-                            </div>
-                        )}
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm text-gray-200 justify-end">
                         <Link
@@ -452,9 +436,6 @@ export default function CuratorClient() {
                                             >
                                                 Continue
                                             </button>
-                                            <p className="text-sm text-gray-300">
-                                                Personas are required to move forward.
-                                            </p>
                                         </div>
                                     </motion.div>
                                 )}
@@ -571,10 +552,6 @@ export default function CuratorClient() {
                                             >
                                                 Review session
                                             </button>
-                                            <p className="text-sm text-gray-300">
-                                                Context is optional—pick at least one if you want
-                                                more precision.
-                                            </p>
                                         </div>
                                     </motion.div>
                                 )}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CURATOR_PERSONAS } from '@/data/curators';
 import { CONTEXT_GROUPS, CONTEXT_TOGGLES } from '@/data/curatorContext';
@@ -53,6 +54,10 @@ const getPersonaById = (id: CuratorId | null): CuratorPersona | null =>
     id ? (CURATOR_PERSONAS.find(curator => curator.id === id) ?? null) : null;
 
 export function useCuratorSession() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
     const [step, setStep] = useState<CuratorStep>(1);
     const [selectedCuratorId, setSelectedCuratorId] = useState<CuratorId | null>(null);
     const [contextSelections, setContextSelections] = useState<ContextSelectionState>(() =>
@@ -328,10 +333,20 @@ export function useCuratorSession() {
     );
 
     const goBackToCurator = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('curator');
+
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname);
+
         cancelInFlight();
-        setStep(1);
+
         resetCuratorResults();
         setError(null);
+
+        setTimeout(() => {
+            setStep(1);
+        }, 250);
     };
 
     const goToSummary = () => {

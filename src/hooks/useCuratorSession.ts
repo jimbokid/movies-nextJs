@@ -152,13 +152,16 @@ export function useCuratorSession() {
         }
     }, []);
 
-    const handleSelectCurator = (curatorId: CuratorId) => {
-        setSelectedCuratorId(curatorId);
-        setError(null);
-        if (step === 1) {
-            setStep(2);
-        }
-    };
+    const handleSelectCurator = useCallback(
+        (curatorId: CuratorId) => {
+            setSelectedCuratorId(curatorId);
+            setError(null);
+            if (step === 1) {
+                setStep(2);
+            }
+        },
+        [step],
+    );
 
     const handleSelectContext = (groupId: string, option: CuratorContextOption) => {
         setContextSelections(prev => ({ ...prev, [groupId]: option }));

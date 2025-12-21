@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import CuratorResults from '@/components/curator/CuratorResults';
 import CuratorSessionsDrawer from '@/components/curator/CuratorSessionsDrawer';
 import useCuratorSession from '@/hooks/useCuratorSession';
 import { CURATOR_PERSONAS } from '@/data/curators';
 import { CuratorId } from '@/types/discoverAi';
+import { RefineMode } from '@/types/curator';
 
 const cardVariants = {
     initial: { opacity: 0, y: 8 },
@@ -174,6 +176,7 @@ function TogglePill({
 export default function CuratorClient() {
     const {
         step,
+        setStep,
         selectedCurator,
         selectedCuratorId,
         curatedSelections,
@@ -212,6 +215,16 @@ export default function CuratorClient() {
         moodDrift,
         setMoodDrift,
     } = useCuratorSession();
+    const searchParams = useSearchParams();
+    const autostartTriggeredRef = useRef(false);
+    const [deepLinkContext, setDeepLinkContext] = useState<{
+        from?: string;
+        movieId?: string;
+        query?: string;
+        curatorId?: CuratorId | null;
+        refine?: RefineMode | null;
+        autostart?: boolean;
+    } | null>(null);
 
     const contextSummary = useMemo(
         () =>
@@ -223,6 +236,83 @@ export default function CuratorClient() {
 
     const topCollapsed = status !== 'idle';
     const showResults = status !== 'idle';
+    const deepLinkAutostart = deepLinkContext?.autostart;
+    const deepLinkCuratorId = deepLinkContext?.curatorId;
+    const deepLinkRefine = deepLinkContext?.refine;
+    const deepLinkLabel = useMemo(() => {
+        if (!deepLinkContext) return null;
+        if (deepLinkContext.movieId) return `Loaded with movie ${deepLinkContext.movieId}`;
+        if (deepLinkContext.query) return `Loaded with search “${deepLinkContext.query}”`;
+        if (deepLinkContext.from) return `Opened from ${deepLinkContext.from}`;
+        return null;
+    }, [deepLinkContext]);
+
+    useEffect(() => {
+        const from = searchParams.get('from') ?? undefined;
+        const movieId = searchParams.get('movieId') ?? undefined;
+        const queryParam = searchParams.get('q') ?? undefined;
+        const curatorParam = searchParams.get('curator');
+        const refineParam = searchParams.get('refine');
+        const autostart = searchParams.get('autostart') === '1';
+
+        const validCurator = CURATOR_PERSONAS.some(persona => persona.id === curatorParam)
+            ? (curatorParam as CuratorId)
+            : null;
+        const validRefine: RefineMode | null =
+            refineParam && ['more_dark', 'more_fun', 'more_cozy', 'more_weird', 'more_action'].includes(refineParam)
+                ? (refineParam as RefineMode)
+                : null;
+
+        const prioritizedMovieId = movieId ?? undefined;
+        const prioritizedQuery = movieId ? undefined : queryParam ?? undefined;
+
+        setDeepLinkContext({
+            from,
+            movieId: prioritizedMovieId,
+            query: prioritizedQuery,
+            curatorId: validCurator,
+            refine: validRefine,
+            autostart,
+        });
+
+        if (validCurator) {
+            handleSelectCurator(validCurator);
+        }
+
+        if (validRefine) {
+            setRefinePreset(validRefine);
+        }
+
+        if (autostart) {
+            setStep(prev => (prev < 3 ? 3 : prev));
+        }
+    }, [handleSelectCurator, searchParams, setRefinePreset, setStep]);
+
+    useEffect(() => {
+        if (!deepLinkAutostart || selectedCuratorId) return;
+        const fallbackCurator = deepLinkCuratorId ?? CURATOR_PERSONAS[0]?.id;
+        if (fallbackCurator) {
+            handleSelectCurator(fallbackCurator as CuratorId);
+        }
+    }, [deepLinkAutostart, deepLinkCuratorId, handleSelectCurator, selectedCuratorId]);
+
+    useEffect(() => {
+        if (!deepLinkAutostart || autostartTriggeredRef.current) return;
+        if (!selectedCuratorId) return;
+
+        if (!canStartSession) {
+            setStep(prev => (prev < 3 ? 3 : prev));
+            return;
+        }
+
+        autostartTriggeredRef.current = true;
+        startSession(deepLinkRefine ?? undefined);
+    }, [canStartSession, deepLinkAutostart, deepLinkRefine, selectedCuratorId, setStep, startSession]);
+
+    useEffect(() => {
+        if (!deepLinkContext) return;
+        // TODO: wire up analytics event `curator_open` with deepLinkContext payload when analytics is available.
+    }, [deepLinkContext]);
 
     return (
         <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 pt-18 text-white">
@@ -233,22 +323,28 @@ export default function CuratorClient() {
             </div>
 
             <div className="relative mx-auto max-w-6xl px-4 py-10 space-y-10">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-[0.2em] text-purple-200">
-                            AI Curator Session
-                        </p>
-                        <h1 className="text-3xl font-semibold md:text-4xl">
-                            Sit down with a film mind—not an algorithm
-                        </h1>
-                        <p className="text-base text-gray-200 md:max-w-2xl">
-                            Choose a persona, add quick context, and get a hero pick with bold alternatives.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-gray-200">
-                        <Link
-                            href="/discover-ai"
-                            className="rounded-full border border-white/10 px-4 py-2 hover:border-purple-300/50 hover:text-white"
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-[0.2em] text-purple-200">
+                                AI Curator Session
+                            </p>
+                            <h1 className="text-3xl font-semibold md:text-4xl">
+                                Sit down with a film mind—not an algorithm
+                            </h1>
+                            <p className="text-base text-gray-200 md:max-w-2xl">
+                                Choose a persona, add quick context, and get a hero pick with bold alternatives.
+                            </p>
+                            {deepLinkLabel && (
+                                <div className="inline-flex items-center gap-2 rounded-full border border-purple-400/50 bg-purple-500/10 px-3 py-1 text-xs text-purple-100">
+                                    <span aria-hidden>🎯</span>
+                                    <span>{deepLinkLabel}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-sm text-gray-200">
+                            <Link
+                                href="/discover-ai"
+                                className="rounded-full border border-white/10 px-4 py-2 hover:border-purple-300/50 hover:text-white"
                         >
                             Back to Discover AI
                         </Link>

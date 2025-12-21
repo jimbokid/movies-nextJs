@@ -26,7 +26,7 @@ type PersonPage = PaginatedResponse<PersonItem>;
 type UseGlobalSearchReturn =
     | {
           kind: 'movie' | 'tv';
-          data: { results: MovieTvItem[]; total_pages: number };
+          data: { results: MovieTvItem[]; total_pages: number; totalResults: number };
           isLoading: boolean;
           isError: boolean;
           fetchNextPage: () => void;
@@ -34,7 +34,7 @@ type UseGlobalSearchReturn =
       }
     | {
           kind: 'person';
-          data: { results: PersonItem[]; total_pages: number };
+          data: { results: PersonItem[]; total_pages: number; totalResults: number };
           isLoading: boolean;
           isError: boolean;
           fetchNextPage: () => void;
@@ -72,12 +72,14 @@ export function useGlobalSearch(kind: SearchKind, query: string): UseGlobalSearc
     if (kind === 'person') {
         const personPages = pages as PersonPage[];
         const flat = personPages.flatMap(p => p.results) ?? [];
+        const totalResults = first?.total_results ?? flat.length;
 
         return {
             kind,
             data: {
                 results: flat,
                 total_pages: first?.total_pages ?? 0,
+                totalResults,
             },
             isLoading,
             isError,
@@ -89,12 +91,14 @@ export function useGlobalSearch(kind: SearchKind, query: string): UseGlobalSearc
     // movie / tv
     const movieTvPages = pages as MovieTvPage[];
     const flat = movieTvPages.flatMap(p => p.results) ?? [];
+    const totalResults = first?.total_results ?? flat.length;
 
     return {
         kind,
         data: {
             results: flat,
             total_pages: first?.total_pages ?? 0,
+            totalResults,
         },
         isLoading,
         isError,

@@ -219,8 +219,6 @@ export default function CuratorClient() {
     const autostartTriggeredRef = useRef(false);
     const [deepLinkContext, setDeepLinkContext] = useState<{
         from?: string;
-        movieId?: string;
-        movieTitle?: string | null;
         query?: string;
         curatorId?: CuratorId | null;
         refine?: RefineMode | null;
@@ -242,8 +240,6 @@ export default function CuratorClient() {
     const deepLinkRefine = deepLinkContext?.refine;
     const deepLinkLabel = useMemo(() => {
         if (!deepLinkContext) return null;
-        if (deepLinkContext.movieTitle) return `Loaded with ${deepLinkContext.movieTitle}`;
-        if (deepLinkContext.movieId) return `Loaded with movie ${deepLinkContext.movieId}`;
         if (deepLinkContext.query) return `Loaded with search “${deepLinkContext.query}”`;
         if (deepLinkContext.from) return `Opened from ${deepLinkContext.from}`;
         return null;
@@ -251,12 +247,10 @@ export default function CuratorClient() {
 
     useEffect(() => {
         const from = searchParams.get('from') ?? undefined;
-        const movieId = searchParams.get('movieId') ?? undefined;
         const queryParam = searchParams.get('q') ?? undefined;
         const curatorParam = searchParams.get('curator');
         const refineParam = searchParams.get('refine');
         const autostart = searchParams.get('autostart') === '1';
-        const movieTitle = searchParams.get('movieTitle');
 
         const validCurator = CURATOR_PERSONAS.some(persona => persona.id === curatorParam)
             ? (curatorParam as CuratorId)
@@ -266,14 +260,9 @@ export default function CuratorClient() {
                 ? (refineParam as RefineMode)
                 : null;
 
-        const prioritizedMovieId = movieId ?? undefined;
-        const prioritizedQuery = movieId ? undefined : queryParam ?? undefined;
-
         setDeepLinkContext({
             from,
-            movieId: prioritizedMovieId,
-            movieTitle: movieTitle ?? null,
-            query: prioritizedQuery,
+            query: queryParam ?? undefined,
             curatorId: validCurator,
             refine: validRefine,
             autostart,

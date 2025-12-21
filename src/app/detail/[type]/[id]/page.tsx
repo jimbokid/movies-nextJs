@@ -60,7 +60,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     const data: MovieDetailPayload = await MovieDetail.getMovieDetail(id, type);
 
     const movie = data.data;
-    const curatorHref = curatorUrlFromMovie(id, movie.title ?? movie.original_name, { from: 'movie' });
+    const curatorHref = curatorUrlFromMovie({ from: 'movie' });
 
     return (
         <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-gray-100">
@@ -210,7 +210,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                             Open Curator
                         </CuratorEntryButton>
                     </div>
-                    <CuratorQuickChips source="movie" movieId={id} movieTitle={movie.title ?? movie.original_name} className="mt-4" />
+                    <CuratorQuickChips source="movie" className="mt-4" />
                 </div>
 
                 {data.similar.results.length > 0 && (

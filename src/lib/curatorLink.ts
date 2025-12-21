@@ -5,8 +5,6 @@ export type CuratorFrom = 'movie' | 'search' | 'discover' | 'header';
 
 export interface CuratorLinkParams {
     from?: CuratorFrom | string;
-    movieId?: string | number | null;
-    movieTitle?: string | null;
     q?: string | null;
     curator?: CuratorId | null;
     refine?: RefineMode | null;
@@ -21,8 +19,6 @@ const normalizeValue = (value?: string | number | null) => {
 
 export const buildCuratorUrl = ({
     from,
-    movieId,
-    movieTitle,
     q,
     curator,
     refine,
@@ -31,9 +27,7 @@ export const buildCuratorUrl = ({
     const params = new URLSearchParams();
     const entries: Record<string, string | undefined> = {
         from: normalizeValue(from),
-        movieId: normalizeValue(movieId),
-        movieTitle: normalizeValue(movieTitle),
-        q: movieId ? undefined : normalizeValue(q),
+        q: normalizeValue(q),
         curator: normalizeValue(curator),
         refine: normalizeValue(refine),
         autostart: autostart ? '1' : undefined,
@@ -47,11 +41,8 @@ export const buildCuratorUrl = ({
     return qs ? `/curator?${qs}` : '/curator';
 };
 
-export const curatorUrlFromMovie = (
-    movieId: string | number,
-    movieTitle?: string | null,
-    opts?: Omit<CuratorLinkParams, 'movieId'>,
-) => buildCuratorUrl({ from: 'movie', ...opts, movieId, movieTitle });
+export const curatorUrlFromMovie = (opts?: CuratorLinkParams) =>
+    buildCuratorUrl({ from: 'movie', ...opts });
 
 export const curatorUrlFromSearch = (
     query: string,

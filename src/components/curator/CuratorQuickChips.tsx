@@ -7,8 +7,6 @@ import { RefineMode } from '@/types/curator';
 interface CuratorQuickChipsProps {
     source: CuratorFrom | string;
     query?: string | null;
-    movieId?: string | number | null;
-    movieTitle?: string | null;
     refine?: RefineMode | null;
     autostart?: boolean;
     selectedCurator?: CuratorId | null;
@@ -18,8 +16,6 @@ interface CuratorQuickChipsProps {
 export default function CuratorQuickChips({
     source,
     query,
-    movieId,
-    movieTitle,
     refine,
     autostart,
     selectedCurator,
@@ -31,8 +27,6 @@ export default function CuratorQuickChips({
                 const href = buildCuratorUrl({
                     from: source,
                     q: query ?? undefined,
-                    movieId: movieId ?? undefined,
-                    movieTitle: movieTitle ?? undefined,
                     curator: persona.id,
                     refine: refine ?? undefined,
                     autostart,

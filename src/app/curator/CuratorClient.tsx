@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import CuratorResults from '@/components/curator/CuratorResults';
 import CuratorSessionsDrawer from '@/components/curator/CuratorSessionsDrawer';
 import useCuratorSession from '@/hooks/useCuratorSession';
 import { CURATOR_PERSONAS } from '@/data/curators';
 import { CuratorId } from '@/types/discoverAi';
+import { RefineMode } from '@/types/curator';
 
 const cardVariants = {
     initial: { opacity: 0, y: 8 },
@@ -174,6 +176,7 @@ function TogglePill({
 export default function CuratorClient() {
     const {
         step,
+        setStep,
         selectedCurator,
         selectedCuratorId,
         curatedSelections,
@@ -211,7 +214,17 @@ export default function CuratorClient() {
         startNewFromHistory,
         moodDrift,
         setMoodDrift,
+        setRefinePreset,
     } = useCuratorSession();
+    const searchParams = useSearchParams();
+    const autostartTriggeredRef = useRef(false);
+    const [deepLinkContext, setDeepLinkContext] = useState<{
+        from?: string;
+        query?: string;
+        curatorId?: CuratorId | null;
+        refine?: RefineMode | null;
+        autostart?: boolean;
+    } | null>(null);
 
     const contextSummary = useMemo(
         () =>
@@ -223,6 +236,87 @@ export default function CuratorClient() {
 
     const topCollapsed = status !== 'idle';
     const showResults = status !== 'idle';
+    const deepLinkAutostart = deepLinkContext?.autostart;
+    const deepLinkCuratorId = deepLinkContext?.curatorId;
+    const deepLinkRefine = deepLinkContext?.refine;
+    const deepLinkLabel = useMemo(() => {
+        if (!deepLinkContext) return null;
+        if (deepLinkContext.query) return `Loaded with search “${deepLinkContext.query}”`;
+        if (deepLinkContext.from) return `Opened from ${deepLinkContext.from}`;
+        return null;
+    }, [deepLinkContext]);
+
+    useEffect(() => {
+        const from = searchParams.get('from') ?? undefined;
+        const queryParam = searchParams.get('q') ?? undefined;
+        const curatorParam = searchParams.get('curator');
+        const refineParam = searchParams.get('refine');
+        const autostart = searchParams.get('autostart') === '1';
+
+        const validCurator = CURATOR_PERSONAS.some(persona => persona.id === curatorParam)
+            ? (curatorParam as CuratorId)
+            : null;
+        const validRefine: RefineMode | null =
+            refineParam &&
+            ['more_dark', 'more_fun', 'more_cozy', 'more_weird', 'more_action'].includes(
+                refineParam,
+            )
+                ? (refineParam as RefineMode)
+                : null;
+
+        setDeepLinkContext({
+            from,
+            query: queryParam ?? undefined,
+            curatorId: validCurator,
+            refine: validRefine,
+            autostart,
+        });
+
+        if (validCurator) {
+            handleSelectCurator(validCurator);
+        }
+
+        if (validRefine) {
+            setRefinePreset(validRefine);
+        }
+
+        if (autostart) {
+            setStep(prev => (prev < 3 ? 3 : prev));
+        }
+    }, [handleSelectCurator, searchParams, setRefinePreset, setStep]);
+
+    useEffect(() => {
+        if (!deepLinkAutostart || selectedCuratorId) return;
+        const fallbackCurator = deepLinkCuratorId ?? CURATOR_PERSONAS[0]?.id;
+        if (fallbackCurator) {
+            handleSelectCurator(fallbackCurator as CuratorId);
+        }
+    }, [deepLinkAutostart, deepLinkCuratorId, handleSelectCurator, selectedCuratorId]);
+
+    useEffect(() => {
+        if (!deepLinkAutostart || autostartTriggeredRef.current) return;
+        if (!selectedCuratorId) return;
+
+        if (!canStartSession) {
+            setStep(prev => (prev < 3 ? 3 : prev));
+            return;
+        }
+
+        autostartTriggeredRef.current = true;
+        startSession(deepLinkRefine ?? undefined);
+    }, [
+        canStartSession,
+        deepLinkAutostart,
+        deepLinkRefine,
+        selectedCuratorId,
+        setStep,
+        startSession,
+    ]);
+
+    useEffect(() => {
+        if (!deepLinkContext) return;
+        // TODO: wire up analytics event `curator_open` with deepLinkContext payload when analytics is available.
+    }, [deepLinkContext]);
 
     return (
         <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-950 pt-18 text-white">
@@ -242,10 +336,17 @@ export default function CuratorClient() {
                             Sit down with a film mind—not an algorithm
                         </h1>
                         <p className="text-base text-gray-200 md:max-w-2xl">
-                            Choose a persona, add quick context, and get a hero pick with bold alternatives.
+                            Choose a persona, add quick context, and get a hero pick with bold
+                            alternatives.
                         </p>
+                        {deepLinkLabel && (
+                            <div className="inline-flex items-center gap-2 rounded-full border border-purple-400/50 bg-purple-500/10 px-3 py-1 text-xs text-purple-100">
+                                <span aria-hidden>🎯</span>
+                                <span>{deepLinkLabel}</span>
+                            </div>
+                        )}
                     </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-gray-200">
+                    <div className="flex flex-wrap gap-3 text-sm text-gray-200 justify-end">
                         <Link
                             href="/discover-ai"
                             className="rounded-full border border-white/10 px-4 py-2 hover:border-purple-300/50 hover:text-white"
@@ -263,15 +364,33 @@ export default function CuratorClient() {
                 </div>
 
                 {!topCollapsed && (
-                    <div
-                        className={`space-y-6 ${loading ? 'pointer-events-none opacity-80' : ''}`}
-                    >
+                    <div className={`space-y-6 ${loading ? 'pointer-events-none opacity-80' : ''}`}>
                         <div className="flex flex-wrap gap-3">
-                            <StepPill active={step === 1} locked={false} label="Choose curator" number={1} />
-                            <StepPill active={step === 2} locked={!canProceedToContext} label="Set the context" number={2} />
-                            <StepPill active={step === 3} locked={!canProceedToSummary} label="Confirm & start" number={3} />
+                            <StepPill
+                                active={step === 1}
+                                locked={false}
+                                label="Choose curator"
+                                number={1}
+                            />
+                            <StepPill
+                                active={step === 2}
+                                locked={!canProceedToContext}
+                                label="Set the context"
+                                number={2}
+                            />
+                            <StepPill
+                                active={step === 3}
+                                locked={!canProceedToSummary}
+                                label="Confirm & start"
+                                number={3}
+                            />
                             {showResults && (
-                                <StepPill active={status === 'loading' || status === 'ready'} locked={false} label="Results" number={4} />
+                                <StepPill
+                                    active={status === 'loading' || status === 'ready'}
+                                    locked={false}
+                                    label="Results"
+                                    number={4}
+                                />
                             )}
                         </div>
 
@@ -293,7 +412,8 @@ export default function CuratorClient() {
                                                     Choose your curator
                                                 </h2>
                                                 <p className="text-sm text-gray-300">
-                                                    Required before you can start. Each persona steers the vibe.
+                                                    Required before you can start. Each persona
+                                                    steers the vibe.
                                                 </p>
                                             </div>
                                         </div>
@@ -314,8 +434,16 @@ export default function CuratorClient() {
                                         <div className="flex flex-wrap gap-3">
                                             <button
                                                 type="button"
-                                                onClick={() => selectedCuratorId && canProceedToContext && goToContext()}
-                                                disabled={!selectedCuratorId || !canProceedToContext || loading}
+                                                onClick={() =>
+                                                    selectedCuratorId &&
+                                                    canProceedToContext &&
+                                                    goToContext()
+                                                }
+                                                disabled={
+                                                    !selectedCuratorId ||
+                                                    !canProceedToContext ||
+                                                    loading
+                                                }
                                                 className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
                                                     selectedCuratorId && !loading
                                                         ? 'bg-purple-500 text-white hover:bg-purple-400'
@@ -347,7 +475,8 @@ export default function CuratorClient() {
                                                     Set the context (optional, but recommended)
                                                 </h2>
                                                 <p className="text-sm text-gray-300">
-                                                    Quick signals help the curator avoid generic answers.
+                                                    Quick signals help the curator avoid generic
+                                                    answers.
                                                 </p>
                                             </div>
                                             <div className="flex flex-wrap gap-2 text-sm text-gray-200">
@@ -389,9 +518,15 @@ export default function CuratorClient() {
                                                                     key={option.id}
                                                                     label={option.label}
                                                                     description={option.description}
-                                                                    active={selectedOption?.id === option.id}
+                                                                    active={
+                                                                        selectedOption?.id ===
+                                                                        option.id
+                                                                    }
                                                                     onClick={() =>
-                                                                        handleSelectContext(group.id, option)
+                                                                        handleSelectContext(
+                                                                            group.id,
+                                                                            option,
+                                                                        )
                                                                     }
                                                                     disabled={loading}
                                                                 />
@@ -437,7 +572,8 @@ export default function CuratorClient() {
                                                 Review session
                                             </button>
                                             <p className="text-sm text-gray-300">
-                                                Context is optional—pick at least one if you want more precision.
+                                                Context is optional—pick at least one if you want
+                                                more precision.
                                             </p>
                                         </div>
                                     </motion.div>
@@ -459,7 +595,8 @@ export default function CuratorClient() {
                                                     Confirmation
                                                 </h2>
                                                 <p className="text-sm text-gray-300">
-                                                    Required to start. Make sure the tone feels right.
+                                                    Required to start. Make sure the tone feels
+                                                    right.
                                                 </p>
                                             </div>
                                             <div className="flex flex-wrap gap-2 text-sm text-gray-200">
@@ -502,73 +639,102 @@ export default function CuratorClient() {
                                                     {contextSummary}
                                                 </p>
                                             </div>
-                                        <div className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/20 via-white/5 to-black/40 p-4">
-                                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
-                                                Mood drift controls
-                                            </p>
-                                            <div className="grid gap-3">
-                                                <div className="flex items-center justify-between text-sm text-gray-200">
-                                                    <span>Fun ↔ Serious</span>
-                                                    <div className="flex gap-1">
-                                                        {[-1, 0, 1].map(val => (
-                                                            <button
-                                                                key={`fun-${val}`}
-                                                                type="button"
-                                                                onClick={() => setMoodDrift(prev => ({ ...prev, funSerious: val }))}
-                                                                className={`h-8 w-8 rounded-full border ${
-                                                                    moodDrift.funSerious === val
-                                                                        ? 'border-purple-400 bg-purple-500/20'
-                                                                        : 'border-white/10 bg-white/5'
-                                                                }`}
-                                                            >
-                                                                {val === -1 ? '←' : val === 1 ? '→' : '•'}
-                                                            </button>
-                                                        ))}
+                                            <div className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/20 via-white/5 to-black/40 p-4">
+                                                <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                                    Mood drift controls
+                                                </p>
+                                                <div className="grid gap-3">
+                                                    <div className="flex items-center justify-between text-sm text-gray-200">
+                                                        <span>Fun ↔ Serious</span>
+                                                        <div className="flex gap-1">
+                                                            {[-1, 0, 1].map(val => (
+                                                                <button
+                                                                    key={`fun-${val}`}
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setMoodDrift(prev => ({
+                                                                            ...prev,
+                                                                            funSerious: val,
+                                                                        }))
+                                                                    }
+                                                                    className={`h-8 w-8 rounded-full border ${
+                                                                        moodDrift.funSerious === val
+                                                                            ? 'border-purple-400 bg-purple-500/20'
+                                                                            : 'border-white/10 bg-white/5'
+                                                                    }`}
+                                                                >
+                                                                    {val === -1
+                                                                        ? '←'
+                                                                        : val === 1
+                                                                          ? '→'
+                                                                          : '•'}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-sm text-gray-200">
+                                                        <span>Mainstream ↔ Indie</span>
+                                                        <div className="flex gap-1">
+                                                            {[-1, 0, 1].map(val => (
+                                                                <button
+                                                                    key={`main-${val}`}
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setMoodDrift(prev => ({
+                                                                            ...prev,
+                                                                            mainstreamIndie: val,
+                                                                        }))
+                                                                    }
+                                                                    className={`h-8 w-8 rounded-full border ${
+                                                                        moodDrift.mainstreamIndie ===
+                                                                        val
+                                                                            ? 'border-purple-400 bg-purple-500/20'
+                                                                            : 'border-white/10 bg-white/5'
+                                                                    }`}
+                                                                >
+                                                                    {val === -1
+                                                                        ? '←'
+                                                                        : val === 1
+                                                                          ? '→'
+                                                                          : '•'}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-sm text-gray-200">
+                                                        <span>Safe ↔ Bold</span>
+                                                        <div className="flex gap-1">
+                                                            {[-1, 0, 1].map(val => (
+                                                                <button
+                                                                    key={`bold-${val}`}
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setMoodDrift(prev => ({
+                                                                            ...prev,
+                                                                            safeBold: val,
+                                                                        }))
+                                                                    }
+                                                                    className={`h-8 w-8 rounded-full border ${
+                                                                        moodDrift.safeBold === val
+                                                                            ? 'border-purple-400 bg-purple-500/20'
+                                                                            : 'border-white/10 bg-white/5'
+                                                                    }`}
+                                                                >
+                                                                    {val === -1
+                                                                        ? '←'
+                                                                        : val === 1
+                                                                          ? '→'
+                                                                          : '•'}
+                                                                </button>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center justify-between text-sm text-gray-200">
-                                                    <span>Mainstream ↔ Indie</span>
-                                                    <div className="flex gap-1">
-                                                        {[-1, 0, 1].map(val => (
-                                                            <button
-                                                                key={`main-${val}`}
-                                                                type="button"
-                                                                onClick={() => setMoodDrift(prev => ({ ...prev, mainstreamIndie: val }))}
-                                                                className={`h-8 w-8 rounded-full border ${
-                                                                    moodDrift.mainstreamIndie === val
-                                                                        ? 'border-purple-400 bg-purple-500/20'
-                                                                        : 'border-white/10 bg-white/5'
-                                                                }`}
-                                                            >
-                                                                {val === -1 ? '←' : val === 1 ? '→' : '•'}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-between text-sm text-gray-200">
-                                                    <span>Safe ↔ Bold</span>
-                                                    <div className="flex gap-1">
-                                                        {[-1, 0, 1].map(val => (
-                                                            <button
-                                                                key={`bold-${val}`}
-                                                                type="button"
-                                                                onClick={() => setMoodDrift(prev => ({ ...prev, safeBold: val }))}
-                                                                className={`h-8 w-8 rounded-full border ${
-                                                                    moodDrift.safeBold === val
-                                                                        ? 'border-purple-400 bg-purple-500/20'
-                                                                        : 'border-white/10 bg-white/5'
-                                                                }`}
-                                                            >
-                                                                {val === -1 ? '←' : val === 1 ? '→' : '•'}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                <p className="text-xs text-gray-300">
+                                                    Nudge the curator without restarting the wizard.
+                                                    Default is balanced.
+                                                </p>
                                             </div>
-                                            <p className="text-xs text-gray-300">
-                                                Nudge the curator without restarting the wizard. Default is balanced.
-                                            </p>
-                                        </div>
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-3">
@@ -582,7 +748,9 @@ export default function CuratorClient() {
                                                         : 'bg-white/5 text-gray-400 cursor-not-allowed'
                                                 }`}
                                             >
-                                                {loading ? 'Curator is thinking...' : 'Start session'}
+                                                {loading
+                                                    ? 'Curator is thinking...'
+                                                    : 'Start session'}
                                             </button>
                                             <p className="text-sm text-gray-300">
                                                 Triggers API and moves you to results.
@@ -599,12 +767,17 @@ export default function CuratorClient() {
                 {topCollapsed && (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
                         <div className="flex items-center gap-3">
-                            <span className="text-2xl">{result?.curator.emoji ?? selectedCurator?.emoji ?? '🎬'}</span>
+                            <span className="text-2xl">
+                                {result?.curator.emoji ?? selectedCurator?.emoji ?? '🎬'}
+                            </span>
                             <div>
                                 <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
-                                    {result?.curator.name ?? selectedCurator?.name ?? 'Curator'} session active
+                                    {result?.curator.name ?? selectedCurator?.name ?? 'Curator'}{' '}
+                                    session active
                                 </p>
-                                <p className="text-sm text-gray-200 line-clamp-1">{contextSummary}</p>
+                                <p className="text-sm text-gray-200 line-clamp-1">
+                                    {contextSummary}
+                                </p>
                             </div>
                         </div>
                         <StepPill active label="Results" number={4} />

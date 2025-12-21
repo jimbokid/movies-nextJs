@@ -4,6 +4,9 @@ import { MovieDetailPayload } from '@/types/movie';
 import Link from 'next/link';
 import MovieCard from '@/components/MovieCard';
 import { Metadata } from 'next';
+import CuratorEntryButton from '@/components/curator/CuratorEntryButton';
+import CuratorQuickChips from '@/components/curator/CuratorQuickChips';
+import { curatorUrlFromMovie } from '@/lib/curatorLink';
 
 interface MovieDetailPageProps {
     params: Promise<{
@@ -57,6 +60,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     const data: MovieDetailPayload = await MovieDetail.getMovieDetail(id, type);
 
     const movie = data.data;
+    const curatorHref = curatorUrlFromMovie({ from: 'movie' });
 
     return (
         <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-gray-100">
@@ -184,7 +188,31 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                     </div>
                 )}
 
-                {/* Similar movies */}
+                <div className="mb-10 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_16px_60px_rgba(0,0,0,0.4)]">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                Curator
+                            </p>
+                            <h2 className="text-2xl font-semibold text-white">
+                                More like this — Curator picks
+                            </h2>
+                            <p className="text-sm text-gray-300">
+                                Jump into Curator with this movie as the starting point.
+                            </p>
+                        </div>
+                        <CuratorEntryButton
+                            href={curatorHref}
+                            variant="primary"
+                            size="sm"
+                            ariaLabel="Open Curator for this movie"
+                        >
+                            Open Curator
+                        </CuratorEntryButton>
+                    </div>
+                    <CuratorQuickChips source="movie" className="mt-4" />
+                </div>
+
                 {data.similar.results.length > 0 && (
                     <div>
                         <h2 className="text-2xl font-semibold mb-4">Similar Movies</h2>

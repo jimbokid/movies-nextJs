@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { buildCuratorUrl } from '@/lib/curatorLink';
 
 const navItems = [
     { href: '/', label: 'Dashboard' },
     { href: '/search?kind=movie', label: 'Search' },
+    { href: buildCuratorUrl({ from: 'header' }), label: 'Curator' },
     { href: '/about', label: 'About' },
 ];
 

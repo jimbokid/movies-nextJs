@@ -1,9 +1,9 @@
 import 'server-only';
 
-import { OfferType, WatchAvailability, WatchCountry, WatchOffer } from '../types';
+import { OfferType, ShowType, WatchAvailability, WatchCountry, WatchOffer } from '../types';
 import { PROVIDER_DOMAIN_ALLOWLIST } from '../watchLinkAllowlist';
 
-const DEFAULT_BASE_URL = 'https://api.movieofthenight.com/api/watch';
+const DEFAULT_BASE_URL = 'https://streaming-availability.p.rapidapi.com';
 const REVALIDATE_SECONDS = 60 * 60 * 12;
 const inFlightRequests = new Map<string, Promise<WatchAvailability>>();
 
@@ -37,6 +37,11 @@ const GENERAL_ALLOWLIST: string[] = [];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeBaseUrl(base: string): string {
+    if (base.startsWith('http://') || base.startsWith('https://')) return base;
+    return `https://${base}`;
 }
 
 function normalizeProviderKey(raw?: unknown): string {
@@ -176,34 +181,52 @@ function normalizeOffer(
     };
 }
 
-function buildRequestUrl(tmdbId: number, country: WatchCountry): string {
-    const base = process.env.MOVIE_OF_THE_NIGHT_BASE_URL ?? DEFAULT_BASE_URL;
-    const url = new URL(base);
-    url.searchParams.set('tmdbId', String(tmdbId));
-    url.searchParams.set('country', country);
-    return url.toString();
-}
-
-async function fetchAvailability(tmdbId: number, country: WatchCountry): Promise<WatchAvailability> {
+function getRapidApiHeaders(baseUrl: string): HeadersInit {
     const apiKey = process.env.MOVIE_OF_THE_NIGHT_API_KEY;
-
     if (!apiKey) {
         throw new Error('Missing MOVIE_OF_THE_NIGHT_API_KEY');
     }
-
-    const requestUrl = buildRequestUrl(tmdbId, country);
-    const headers: HeadersInit = {
+    const host = new URL(baseUrl).hostname;
+    return {
         Accept: 'application/json',
-        'x-api-key': apiKey,
-        Authorization: `Bearer ${apiKey}`,
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': host,
     };
+}
+
+export function buildRequestUrl(type: ShowType, tmdbId: number, country: WatchCountry): string {
+    const rawBase = process.env.MOVIE_OF_THE_NIGHT_BASE_URL ?? DEFAULT_BASE_URL;
+    const base = normalizeBaseUrl(rawBase);
+    const url = new URL(`/shows/${type}/${tmdbId}`, base);
+    url.searchParams.set('country', country);
+    url.searchParams.set('output_language', 'en');
+    return url.toString();
+}
+
+async function fetchAvailability(
+    type: ShowType,
+    tmdbId: number,
+    country: WatchCountry,
+): Promise<WatchAvailability> {
+    const rawBase = process.env.MOVIE_OF_THE_NIGHT_BASE_URL ?? DEFAULT_BASE_URL;
+    const base = normalizeBaseUrl(rawBase);
+    const requestUrl = buildRequestUrl(type, tmdbId, country);
+    const headers = getRapidApiHeaders(base);
 
     const response = await fetch(requestUrl, {
+        method: 'GET',
         headers,
         next: { revalidate: REVALIDATE_SECONDS },
     });
 
     if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        console.error('[watch] Movie of the Night error', {
+            url: requestUrl,
+            status: response.status,
+            statusText: response.statusText,
+            body: body.slice(0, 800),
+        });
         throw new Error(`Movie of the Night request failed with status ${response.status}`);
     }
 
@@ -246,16 +269,17 @@ async function fetchAvailability(tmdbId: number, country: WatchCountry): Promise
 }
 
 export async function getWatchAvailability(
+    type: ShowType,
     tmdbId: number,
     country: WatchCountry,
 ): Promise<WatchAvailability> {
     const normalizedCountry = country.toUpperCase();
-    const cacheKey = `${tmdbId}-${normalizedCountry}`;
+    const cacheKey = `${type}-${tmdbId}-${normalizedCountry}`;
 
     const inFlight = inFlightRequests.get(cacheKey);
     if (inFlight) return inFlight;
 
-    const request = fetchAvailability(tmdbId, normalizedCountry).finally(() => {
+    const request = fetchAvailability(type, tmdbId, normalizedCountry).finally(() => {
         inFlightRequests.delete(cacheKey);
     });
 

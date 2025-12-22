@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useWatchAvailability } from '../client/useWatchAvailability';
-import { WatchOffer } from '../types';
+import { ShowType, WatchOffer } from '../types';
 
 const DEFAULT_COUNTRY = 'UA';
 const STORAGE_KEY = 'cineview-watch-country';
@@ -25,6 +25,7 @@ const OFFER_GROUPS: { types: Array<WatchOffer['type']>; label: string }[] = [
 ];
 
 type Props = {
+    type: ShowType;
     tmdbId: number;
     country: string;
 };
@@ -78,7 +79,7 @@ function LoadingSkeleton() {
     );
 }
 
-export default function WhereToWatch({ tmdbId, country }: Props) {
+export default function WhereToWatch({ type, tmdbId, country }: Props) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
@@ -116,6 +117,7 @@ export default function WhereToWatch({ tmdbId, country }: Props) {
     }, [country, pathname, router, searchParams]);
 
     const { data, isLoading, isFetching, isError, refetch } = useWatchAvailability(
+        type,
         tmdbId,
         selectedCountry,
     );

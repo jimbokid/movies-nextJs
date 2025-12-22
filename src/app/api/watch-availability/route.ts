@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getWatchAvailability } from '@/features/watch/server/movieOfTheNight';
-import { WatchCountry } from '@/features/watch/types';
+import { parseShowType, WatchCountry } from '@/features/watch/types';
 
 function validateCountry(country: string | null): country is WatchCountry {
     return Boolean(country && /^[A-Z]{2}$/.test(country));
@@ -8,15 +8,23 @@ function validateCountry(country: string | null): country is WatchCountry {
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
+    const type = parseShowType(searchParams.get('type') ?? undefined);
     const tmdbIdParam = searchParams.get('tmdbId');
     const countryParam = searchParams.get('country');
 
-    if (!tmdbIdParam || !countryParam) {
-        return NextResponse.json({ error: 'tmdbId and country are required' }, { status: 400 });
+    if (!type) {
+        return NextResponse.json(
+            { error: 'Missing or invalid type (movie|tv)' },
+            { status: 400 },
+        );
+    }
+
+    if (!tmdbIdParam) {
+        return NextResponse.json({ error: 'tmdbId is required' }, { status: 400 });
     }
 
     const tmdbId = Number(tmdbIdParam);
-    const country = countryParam.toUpperCase();
+    const country = (countryParam ?? 'UA').toUpperCase();
 
     if (!Number.isFinite(tmdbId)) {
         return NextResponse.json({ error: 'tmdbId must be a number' }, { status: 400 });
@@ -27,7 +35,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        const availability = await getWatchAvailability(tmdbId, country);
+        const availability = await getWatchAvailability(type, tmdbId, country);
         return NextResponse.json(availability);
     } catch (error) {
         console.error('[watch] Failed to load availability', error);

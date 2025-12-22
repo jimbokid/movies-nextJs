@@ -57,7 +57,7 @@ function MovieCard({ pick, priority }: { pick: CuratedPick; priority?: boolean }
             } ${locked ? 'ring-1 ring-amber-400/70' : ''}`}
         >
             <Link
-                href={`/detail/movie/${tmdb_id ?? ''}`}
+                href={`/shows/movie/${tmdb_id ?? ''}`}
                 className="relative block aspect-[2/3] w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
             >
                 {poster_path ? (
@@ -89,7 +89,7 @@ function MovieCard({ pick, priority }: { pick: CuratedPick; priority?: boolean }
                     </div>
                 </div>
                 <Link
-                    href={`/detail/movie/${tmdb_id ?? ''}`}
+                    href={`/shows/movie/${tmdb_id ?? ''}`}
                     className="block text-lg font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
                 >
                     {title}
@@ -102,7 +102,7 @@ function MovieCard({ pick, priority }: { pick: CuratedPick; priority?: boolean }
 
     return (
         <Link
-            href={`/detail/movie/${tmdb_id}`}
+            href={`/shows/movie/${tmdb_id}`}
             className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
         >
             {content}

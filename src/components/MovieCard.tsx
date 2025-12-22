@@ -13,7 +13,7 @@ interface MovieProps {
 
 const MovieCard: React.FC<MovieProps> = ({ movie, type = 'movie', priority = false }) => {
     const title = movie.title || movie.name || movie.original_name;
-    const linkHref = `/detail/${type}/${movie.id}`;
+    const linkHref = `/shows/${type}/${movie.id}`;
 
     return (
         <Link

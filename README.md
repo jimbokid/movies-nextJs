@@ -78,6 +78,6 @@ npm run dev
 To enable the **Where to watch** integration powered by Movie of the Night, copy `.env.local.example` to `.env.local` and set:
 
 - `MOVIE_OF_THE_NIGHT_API_KEY` – your API token from Movie of the Night.
-- `MOVIE_OF_THE_NIGHT_BASE_URL` – endpoint that returns availability by TMDB movie id and country (defaults to the hosted API if omitted).
+- `MOVIE_OF_THE_NIGHT_BASE_URL` – base URL for the RapidAPI endpoint (defaults to `https://streaming-availability.p.rapidapi.com` if omitted).
 
 Links surfaced in the UI are gated by a provider allowlist located at `src/features/watch/watchLinkAllowlist.ts` to prevent unsafe redirects.

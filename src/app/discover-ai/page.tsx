@@ -312,7 +312,7 @@ export default function DiscoverAiPage() {
                                             >
                                                 {posterUrl ? (
                                                     <Link
-                                                        href={`/detail/movie/${movie.tmdb_id}`}
+                                                        href={`/shows/movie/${movie.tmdb_id}`}
                                                         className="relative h-64 w-full overflow-hidden"
                                                     >
                                                         <Image
@@ -337,7 +337,7 @@ export default function DiscoverAiPage() {
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="space-y-1">
                                                             <Link
-                                                                href={`/detail/movie/${movie.tmdb_id}`}
+                                                                href={`/shows/movie/${movie.tmdb_id}`}
                                                             >
                                                                 <h3 className="text-xl font-semibold text-white">
                                                                     {movie.title}
@@ -366,7 +366,7 @@ export default function DiscoverAiPage() {
                                                     <div className="flex items-center justify-between pt-2">
                                                         {movie.tmdb_id ? (
                                                             <Link
-                                                                href={`/detail/movie/${movie.tmdb_id}`}
+                                                                href={`/shows/movie/${movie.tmdb_id}`}
                                                                 className="inline-flex items-center gap-2 rounded-full border border-purple-300/40 bg-purple-500/10 px-3 py-1 text-sm font-semibold text-purple-100 transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(124,58,237,0.35)]"
                                                             >
                                                                 View details

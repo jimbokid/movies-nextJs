@@ -13,6 +13,8 @@ import {
 import { CURATOR_PERSONAS } from '@/data/curators';
 import { getActiveMoodRules, MoodRule } from './moodRules';
 import { REFINE_POLICIES } from '@/constants/curatorThinking';
+import { requirePro } from '@/utils/entitlements';
+import { track } from '@/utils/analytics';
 
 interface RequestBody {
     curatorId?: CuratorPersona['id'];
@@ -1103,6 +1105,19 @@ export async function POST(req: Request) {
     const lockedTitles = normalizeTitleArray(body?.lockedTitles ?? []);
     const rejectedTitles = normalizeTitleArray(body?.rejectedTitles ?? []);
     const refineMode = isRefineMode(body?.refineMode) ? body?.refineMode : undefined;
+
+    if (refineMode) {
+        const entitlements = await requirePro();
+
+        if (!entitlements.isPro) {
+            track('refine_blocked_pro_required', {});
+            return NextResponse.json(
+                { error: 'PRO_REQUIRED', message: 'Refine requires Curator Pro.' },
+                { status: 402 },
+            );
+        }
+    }
+
     const refinePolicy = refineMode ? REFINE_POLICIES[refineMode] : null;
     const mode: RequestBody['mode'] =
         body?.mode === 'swap_primary' || body?.mode === 'swap_alternative' ? body.mode : 'full';

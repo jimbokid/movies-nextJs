@@ -71,3 +71,13 @@ npm install
 
 # 4. Run development server
 npm run dev
+
+```
+
+### Paddle billing (POC)
+
+This POC uses Paddle for the Curator Pro paywall. Configure these environment variables to enable live checkout redirects:
+
+- `PADDLE_CHECKOUT_LINK` — Base Paddle checkout URL (e.g. https://sandbox-checkout.paddle.com/checkout/custom)
+- `PADDLE_PRICE_ID` — Paddle price ID for Curator Pro
+- `NEXT_PUBLIC_APP_URL` — Public app URL (used for success/cancel redirects)

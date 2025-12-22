@@ -10,6 +10,10 @@ import useCuratorSession from '@/hooks/useCuratorSession';
 import { CURATOR_PERSONAS } from '@/data/curators';
 import { CuratorId } from '@/types/discoverAi';
 import { RefineMode } from '@/types/curator';
+import PaywallModal from '@/components/curator/PaywallModal';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { useRouter } from 'next/navigation';
+import { track } from '@/utils/analytics';
 
 const cardVariants = {
     initial: { opacity: 0, y: 8 },
@@ -212,6 +216,9 @@ export default function CuratorClient() {
         setMoodDrift,
         setRefinePreset,
     } = useCuratorSession();
+    const { data: entitlements, error: entitlementsError } = useEntitlements();
+    const router = useRouter();
+    const [paywallOpen, setPaywallOpen] = useState(false);
     const searchParams = useSearchParams();
     const autostartTriggeredRef = useRef(false);
     const [deepLinkContext, setDeepLinkContext] = useState<{
@@ -221,6 +228,22 @@ export default function CuratorClient() {
         refine?: RefineMode | null;
         autostart?: boolean;
     } | null>(null);
+    const handleRefine = (preset: RefineMode) => {
+        if (entitlementsError?.message === 'UNAUTHENTICATED') {
+            const next = encodeURIComponent(window.location.pathname + window.location.search);
+            router.push(`/login?next=${next}`);
+            return;
+        }
+
+        if (entitlements?.isPro) {
+            startSession(preset);
+            track('refine_success', { preset });
+            return;
+        }
+
+        track('paywall_shown', { source: 'refine', preset });
+        setPaywallOpen(true);
+    };
 
     const contextSummary = useMemo(
         () =>
@@ -783,7 +806,7 @@ export default function CuratorClient() {
                             primary={lineupPrimary}
                             alternatives={lineupAlternatives}
                             status={status}
-                            onRefine={startSession}
+                            onRefine={handleRefine}
                             activePreset={refinePreset}
                             onEdit={goToContext}
                             onNewSession={newSession}
@@ -804,6 +827,7 @@ export default function CuratorClient() {
                 onOpenSession={loadSessionFromHistory}
                 onStartFromSession={startNewFromHistory}
             />
+            <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} />
         </main>
     );
 }

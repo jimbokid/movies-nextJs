@@ -7,8 +7,6 @@ import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
 import ModeSwitch from '@/app/discover-ai/ModeSwitch';
 import useDiscoverAi from '@/hooks/useDiscoverAi';
-import CuratorEntryButton from '@/components/curator/CuratorEntryButton';
-import CuratorQuickChips from '@/components/curator/CuratorQuickChips';
 import { buildCuratorUrl } from '@/lib/curatorLink';
 
 import {
@@ -87,43 +85,6 @@ export default function DiscoverAiPage() {
 
                 <div className="relative max-w-6xl mx-auto px-4 py-12 space-y-10">
                     <Heading shuffleBadges={shuffleBadges} shuffleDisabled={mode === 'all'} />
-
-                    <section className="rounded-3xl border border-white/10 bg-white/5 p-5 md:p-6 space-y-3 shadow-[0_16px_60px_rgba(0,0,0,0.4)]">
-                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                            <div className="space-y-1">
-                                <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
-                                    Curator
-                                </p>
-                                <h2 className="text-xl font-semibold">Pick my movie</h2>
-                                <p className="text-sm text-gray-300">
-                                    Jump straight into curated picks or choose the persona first.
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <CuratorEntryButton
-                                    href={curatorAutostartHref}
-                                    variant="primary"
-                                    size="sm"
-                                    ariaLabel="Open Curator with autostart from discover"
-                                >
-                                    <span aria-hidden>✨</span>
-                                    Pick my movie
-                                </CuratorEntryButton>
-                                <CuratorEntryButton
-                                    href={curatorHref}
-                                    variant="secondary"
-                                    size="sm"
-                                    ariaLabel="Choose a curator"
-                                >
-                                    Choose a curator
-                                </CuratorEntryButton>
-                            </div>
-                        </div>
-                        <CuratorQuickChips source="discover" className="pt-1" />
-                        <p className="text-xs text-gray-300">
-                            Hint: you can start with your vibes here, then refine in Curator.
-                        </p>
-                    </section>
 
                     <section className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.45)] p-4 md:p-8 space-y-6 overflow-hidden">
                         {loading && <LoadingOverlay message={loadingMessage} />}

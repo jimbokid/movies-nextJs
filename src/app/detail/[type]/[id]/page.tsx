@@ -7,11 +7,15 @@ import { Metadata } from 'next';
 import CuratorEntryButton from '@/components/curator/CuratorEntryButton';
 import CuratorQuickChips from '@/components/curator/CuratorQuickChips';
 import { curatorUrlFromMovie } from '@/lib/curatorLink';
+import WhereToWatch from '@/features/watch/ui/WhereToWatch';
 
 interface MovieDetailPageProps {
     params: Promise<{
         id: string;
         type: string;
+    }>;
+    searchParams?: Promise<{
+        [key: string]: string | string[] | undefined;
     }>;
 }
 
@@ -54,8 +58,17 @@ export async function generateMetadata({ params }: MovieDetailPageProps): Promis
     };
 }
 
-export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
-    const { id, type } = await params;
+export default async function MovieDetailPage({ params, searchParams }: MovieDetailPageProps) {
+    const [paramsValue, searchParamsValue] = await Promise.all([
+        params,
+        searchParams ?? Promise.resolve({}),
+    ]);
+
+    const { id, type } = paramsValue;
+    const rawCountry = searchParamsValue?.country;
+    const countryValue = Array.isArray(rawCountry) ? rawCountry[0] : rawCountry;
+    const selectedCountry =
+        countryValue && /^[A-Za-z]{2}$/.test(countryValue) ? countryValue.toUpperCase() : 'UA';
 
     const data: MovieDetailPayload = await MovieDetail.getMovieDetail(id, type);
 
@@ -119,6 +132,8 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                     <h2 className="text-2xl font-semibold mb-3">Overview</h2>
                     <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
                 </div>
+
+                <WhereToWatch tmdbId={Number(id)} country={selectedCountry} />
 
                 {data.keywords && data.keywords.length > 0 && (
                     <div className="mb-8">

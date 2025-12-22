@@ -18,16 +18,13 @@ export default function Header() {
     return (
         <header className="fixed z-50 w-full bg-gray-950/50 backdrop-blur border-b border-neutral-800 h-18">
             <div className="max-w-6xl mx-auto px-4 py-3 grid grid-cols-3 items-center">
-                {/* Logo - Left */}
                 <Link
                     href="/"
                     className="justify-self-start text-xl font-semibold transition-colors text-white hover:text-yellow-400"
                 >
-                    <span className="hidden sm:inline">CineView</span>
+                    <span className="hidden md:inline">CineView</span>
                 </Link>
 
-
-                {/* Center CTA - Discover AI */}
                 <div className="justify-self-center">
                     <motion.div
                         initial={{ backgroundPosition: '0% 50%' }}
@@ -46,18 +43,16 @@ export default function Header() {
                     >
                         <Link
                             href="/discover-ai"
-                            className="inline-flex items-center gap-2 rounded-full bg-gray-950/80 px-4 py-2 text-xs sm:text-sm font-semibold text-purple-100 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:bg-gray-900 transition-colors"
+                            className="inline-flex items-center gap-2 rounded-full bg-gray-950/80 px-4 py-2 text-xs md:text-sm font-semibold text-purple-100 shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:bg-gray-900 transition-colors"
                         >
-                            <span className="text-base sm:text-lg">✨</span>
+                            <span className="text-base md:text-lg">✨</span>
                             <span className="text-nowrap">Discover with AI</span>
                         </Link>
                     </motion.div>
                 </div>
 
-                {/* Right nav - Desktop + Mobile */}
                 <div className="justify-self-end flex items-center gap-3">
-                    {/* Desktop nav */}
-                    <nav className="hidden sm:flex items-center gap-6 text-gray-300 text-sm">
+                    <nav className="hidden md:flex items-center gap-6 text-gray-300 text-sm">
                         {navItems.map(item => {
                             return (
                                 <Link
@@ -71,11 +66,10 @@ export default function Header() {
                         })}
                     </nav>
 
-                    {/* Mobile hamburger */}
                     <button
                         type="button"
                         onClick={() => setIsOpen(prev => !prev)}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-700 bg-neutral-900/70 text-neutral-100 hover:border-purple-400/70 hover:text-white transition sm:hidden"
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-700 bg-neutral-900/70 text-neutral-100 hover:border-purple-400/70 hover:text-white transition md:hidden"
                         aria-label="Toggle navigation menu"
                     >
                         <motion.span
@@ -112,7 +106,6 @@ export default function Header() {
                 </div>
             </div>
 
-            {/* Mobile dropdown nav */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.nav
@@ -121,7 +114,7 @@ export default function Header() {
                         exit={{ opacity: 0, y: -8 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
                         className="
-                sm:hidden
+                md:hidden
                 absolute left-0 top-full w-full
                 z-50
                 border-t border-neutral-800
@@ -140,7 +133,6 @@ export default function Header() {
                                 </Link>
                             ))}
 
-                            {/* AI CTA */}
                             <Link
                                 href="/discover-ai"
                                 onClick={() => setIsOpen(false)}

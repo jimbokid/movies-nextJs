@@ -7,7 +7,8 @@ import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
 import ModeSwitch from '@/app/discover-ai/ModeSwitch';
 import useDiscoverAi from '@/hooks/useDiscoverAi';
-import { buildCuratorUrl } from '@/lib/curatorLink';
+import InlinePixelLoaderOverlay from '@/features/ui/InlinePixelLoaderOverlay/InlinePixelLoaderOverlay';
+import useDelayedBoolean from '@/shared/hooks/useDelayedBoolean';
 
 import {
     BADGE_COLORS,
@@ -71,8 +72,7 @@ export default function DiscoverAiPage() {
         resultsRef,
     } = useDiscoverAi();
 
-    const curatorAutostartHref = buildCuratorUrl({ from: 'discover', autostart: true });
-    const curatorHref = buildCuratorUrl({ from: 'discover' });
+    const showDiscoverOverlay = useDelayedBoolean(loading, 250);
 
     return (
         <>
@@ -88,6 +88,11 @@ export default function DiscoverAiPage() {
 
                     <section className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.45)] p-4 md:p-8 space-y-6 overflow-hidden">
                         {loading && <LoadingOverlay message={loadingMessage} />}
+                        <InlinePixelLoaderOverlay
+                            show={showDiscoverOverlay}
+                            label="Finding something that fits your vibe…"
+                            variant="normal"
+                        />
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                             <div>
                                 <p className="text-sm text-purple-200/80">
@@ -244,7 +249,13 @@ export default function DiscoverAiPage() {
                         </button>
                     </div>
 
-                    <section className="space-y-6 pb-8">
+                    <section className="relative space-y-6 pb-8">
+                        <InlinePixelLoaderOverlay
+                            show={showDiscoverOverlay}
+                            label={loadingMessage ?? 'Finding something that fits your vibe…'}
+                            variant="compact"
+                            height={340}
+                        />
                         <div className="flex items-center gap-3">
                             <h2 className="text-2xl font-semibold">Recommendations</h2>
                             <span className="text-sm text-gray-400">

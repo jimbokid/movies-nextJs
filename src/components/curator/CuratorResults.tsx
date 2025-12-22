@@ -6,6 +6,8 @@ import { useMemo } from 'react';
 import { AiRecommendedMovie } from '@/types/discoverAi';
 import { RefineMode } from '@/types/curator';
 import CuratorLoading, { CuratorLoadingMode } from './CuratorLoading';
+import InlinePixelLoaderOverlay from '@/features/ui/InlinePixelLoaderOverlay/InlinePixelLoaderOverlay';
+import useDelayedBoolean from '@/shared/hooks/useDelayedBoolean';
 
 type CuratedPick = (AiRecommendedMovie & { locked?: boolean; expanded?: boolean }) | null;
 
@@ -127,6 +129,7 @@ export default function CuratorResults({
 }: CuratorResultsProps) {
     const hasResults = Boolean(primary || alternatives.length);
     const note = useMemo(() => truncateNote(curatorNote), [curatorNote]);
+    const showInlineOverlay = useDelayedBoolean(status === 'loading', 250);
 
     return (
         <div className="relative space-y-5 rounded-3xl border border-white/10 bg-white/5 p-5 md:p-8">
@@ -256,6 +259,14 @@ export default function CuratorResults({
                         thinkingLines={thinkingLines}
                     />
                 )}
+
+                <InlinePixelLoaderOverlay
+                    show={showInlineOverlay}
+                    label={loadingMessage ?? 'Curator is cooking…'}
+                    variant="compact"
+                    height={520}
+                    zIndex={40}
+                />
             </div>
         </div>
     );

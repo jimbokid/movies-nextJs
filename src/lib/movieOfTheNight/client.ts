@@ -5,7 +5,21 @@ import { serverEnv } from '@/lib/serverEnv';
 import { WatchProvider, WatchProviderType, WhereToWatch } from '@/types/whereToWatch';
 
 type RawStreamingOption = {
-    service?: string;
+    service?:
+        | string
+        | {
+              id?: string;
+              name?: string;
+              homePage?: string;
+              imageSet?: {
+                  lightThemeImage?: string;
+                  darkThemeImage?: string;
+                  horizontalPoster?: string;
+                  square?: string;
+                  icon?: string;
+                  logo?: string;
+              };
+          };
     provider?: string;
     name?: string;
     type?: string;
@@ -13,6 +27,7 @@ type RawStreamingOption = {
     watchLink?: string;
     webUrl?: string;
     url?: string;
+    videoLink?: string;
     deepLink?: string;
     streamingUrl?: string;
     playerUrl?: string;
@@ -87,6 +102,7 @@ const sortProviders = (providers: WatchProvider[]) =>
 const pickBestLink = (option: RawStreamingOption) =>
     option.watchLink ??
     option.link ??
+    option.videoLink ??
     option.webUrl ??
     option.url ??
     option.playerUrl ??
@@ -124,7 +140,9 @@ const normalizeWhereToWatch = (payload: unknown, region: string): WhereToWatch |
 
     const grouped = optionsForRegion.reduce<Map<string, RawStreamingOption[]>>((acc, option) => {
         const serviceId =
-            option?.service ??
+            (typeof option?.service === 'string'
+                ? option.service
+                : option?.service?.id ?? option?.service?.name) ??
             option?.provider ??
             option?.platform?.id ??
             option?.name;
@@ -143,16 +161,31 @@ const normalizeWhereToWatch = (payload: unknown, region: string): WhereToWatch |
         if (!best) return;
         const link = pickBestLink(best);
         if (!link) return;
+        const serviceLogo =
+            typeof best.service === 'object'
+                ? best.service?.imageSet?.lightThemeImage ??
+                  best.service?.imageSet?.darkThemeImage ??
+                  best.service?.imageSet?.horizontalPoster ??
+                  best.service?.imageSet?.square ??
+                  best.service?.imageSet?.icon ??
+                  best.service?.imageSet?.logo
+                : undefined;
         const logo =
             best.logo ??
             best.icon ??
             best.image ??
             best.imageSet?.verticalPoster ??
-            best.platform?.icon;
+            best.platform?.icon ??
+            serviceLogo;
 
         providers.push({
             id: serviceId,
-            name: formatServiceName(serviceId, best.name ?? best.platform?.name),
+            name: formatServiceName(
+                serviceId,
+                (typeof best.service === 'object' ? best.service?.name : undefined) ??
+                    best.name ??
+                    best.platform?.name,
+            ),
             logo,
             link,
             type: mapProviderType(best.type ?? best.offerType ?? best.price?.type),

@@ -7,7 +7,6 @@ import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
 import ModeSwitch from '@/app/discover-ai/ModeSwitch';
 import useDiscoverAi from '@/hooks/useDiscoverAi';
-import { buildCuratorUrl } from '@/lib/curatorLink';
 
 import {
     BADGE_COLORS,
@@ -70,9 +69,6 @@ export default function DiscoverAiPage() {
         didSearch,
         resultsRef,
     } = useDiscoverAi();
-
-    const curatorAutostartHref = buildCuratorUrl({ from: 'discover', autostart: true });
-    const curatorHref = buildCuratorUrl({ from: 'discover' });
 
     return (
         <>

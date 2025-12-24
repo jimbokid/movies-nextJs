@@ -7,6 +7,8 @@ import { Metadata } from 'next';
 import CuratorEntryButton from '@/components/curator/CuratorEntryButton';
 import CuratorQuickChips from '@/components/curator/CuratorQuickChips';
 import { curatorUrlFromMovie } from '@/lib/curatorLink';
+import { DEFAULT_STREAMING_REGION } from '@/constants/streaming';
+import WhereToWatch from '@/features/watch/components/WhereToWatch';
 
 interface MovieDetailPageProps {
     params: Promise<{
@@ -118,6 +120,14 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                 <div className="mb-10">
                     <h2 className="text-2xl font-semibold mb-3">Overview</h2>
                     <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
+                </div>
+
+                <div className="mb-10">
+                    <WhereToWatch
+                        type={type === 'tv' ? 'tv' : 'movie'}
+                        id={id}
+                        region={DEFAULT_STREAMING_REGION}
+                    />
                 </div>
 
                 {data.keywords && data.keywords.length > 0 && (

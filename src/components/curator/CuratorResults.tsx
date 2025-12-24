@@ -6,6 +6,8 @@ import { useMemo } from 'react';
 import { AiRecommendedMovie } from '@/types/discoverAi';
 import { RefineMode } from '@/types/curator';
 import CuratorLoading, { CuratorLoadingMode } from './CuratorLoading';
+import WhereToWatch from '@/features/watch/components/WhereToWatch';
+import { DEFAULT_STREAMING_REGION } from '@/constants/streaming';
 
 type CuratedPick = (AiRecommendedMovie & { locked?: boolean; expanded?: boolean }) | null;
 
@@ -173,8 +175,16 @@ export default function CuratorResults({
                         )}
 
                         <div className="grid gap-4 md:grid-cols-3">
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-2 space-y-3">
                                 <MovieCard pick={primary} priority />
+                                {primary?.tmdb_id && (
+                                    <WhereToWatch
+                                        type="movie"
+                                        id={primary.tmdb_id}
+                                        region={DEFAULT_STREAMING_REGION}
+                                        compact
+                                    />
+                                )}
                             </div>
                             <div className="space-y-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">

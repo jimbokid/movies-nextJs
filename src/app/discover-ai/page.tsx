@@ -77,7 +77,7 @@ export default function DiscoverAiPage() {
 
         const headerElement = document.querySelector('header');
         const headerHeight = headerElement?.getBoundingClientRect().height ?? 0;
-        const safeOffset = headerHeight + 16; // add spacing below the fixed header
+        const safeOffset = headerHeight + 16;
         const elementTop =
             resultsRef.current.getBoundingClientRect().top + window.scrollY - safeOffset;
 
@@ -171,8 +171,6 @@ export default function DiscoverAiPage() {
                                 {groupedBadges.map(([category, badges]) => {
                                     const categoryTitleColor =
                                         BADGE_TITLE_COLORS[category] ?? DEFAULT_BADGE_TITLE_COLOR;
-
-                                    debugger
 
                                     return (
                                         <motion.div

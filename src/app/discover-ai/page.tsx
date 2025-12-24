@@ -147,6 +147,8 @@ export default function DiscoverAiPage() {
                                     const categoryTitleColor =
                                         BADGE_TITLE_COLORS[category] ?? DEFAULT_BADGE_TITLE_COLOR;
 
+                                    debugger
+
                                     return (
                                         <motion.div
                                             key={category}
@@ -155,7 +157,7 @@ export default function DiscoverAiPage() {
                                         >
                                             <div className="flex items-center gap-2">
                                                 <span
-                                                    className={`text-xs tracking-[0.18em] uppercase text-gray-300 ${categoryTitleColor}`}
+                                                    className={`text-xs tracking-[0.18em] uppercase ${categoryTitleColor}`}
                                                 >
                                                     {category.toUpperCase()}
                                                 </span>

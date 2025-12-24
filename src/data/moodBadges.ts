@@ -1,6 +1,12 @@
 import { MoodBadge } from '@/types/discoverAi';
 
 export const moodBadges: MoodBadge[] = [
+    // Occasions (seasonal / holiday intent)
+    { id: 'christmas', label: 'Christmas', category: 'occasion' },
+    { id: 'new-year', label: 'New Year', category: 'occasion' },
+    { id: 'holiday-night', label: 'Holiday night', category: 'occasion' },
+    { id: 'winter-break', label: 'Winter break', category: 'occasion' },
+    { id: 'family-gathering', label: 'Family gathering', category: 'occasion' },
     // Genres (unchanged, all relevant)
     { id: 'drama', label: 'Drama', category: 'genre' },
     { id: 'thriller', label: 'Thriller', category: 'genre' },
@@ -125,7 +131,8 @@ export const BADGE_TITLE_COLORS: Record<string, string> = {
     aesthetic: 'text-pink-400',
     theme: 'text-green-400',
     emotion: 'text-amber-400',
-}
+    occasion: 'text-cyan-300',
+};
 
 export const BADGE_COLORS: Record<string, string> = {
     genre: 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 border-blue-400/40 text-blue-100 hover:shadow-[0_0_20px_rgba(59,130,246,0.35)]',

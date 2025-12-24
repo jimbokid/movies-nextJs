@@ -1,4 +1,4 @@
-export type BadgeCategory = 'genre' | 'vibe' | 'aesthetic' | 'theme' | 'emotion';
+export type BadgeCategory = 'genre' | 'vibe' | 'aesthetic' | 'theme' | 'emotion' | 'occasion';
 
 export type CuratorId = 'director' | 'regular-guy' | 'indie-nerd' | 'film-student';
 

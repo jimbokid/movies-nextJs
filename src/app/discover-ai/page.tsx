@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence, type Variants, stagger } from 'framer-motion';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
 import ModeSwitch from '@/app/discover-ai/ModeSwitch';
 import useDiscoverAi from '@/hooks/useDiscoverAi';
-import { buildCuratorUrl } from '@/lib/curatorLink';
 
 import {
     BADGE_COLORS,
@@ -70,9 +70,34 @@ export default function DiscoverAiPage() {
         didSearch,
         resultsRef,
     } = useDiscoverAi();
+    const [shouldScrollToResults, setShouldScrollToResults] = useState(false);
 
-    const curatorAutostartHref = buildCuratorUrl({ from: 'discover', autostart: true });
-    const curatorHref = buildCuratorUrl({ from: 'discover' });
+    const scrollToResults = useCallback(() => {
+        if (!resultsRef.current) return;
+
+        const headerElement = document.querySelector('header');
+        const headerHeight = headerElement?.getBoundingClientRect().height ?? 0;
+        const safeOffset = headerHeight + 16; // add spacing below the fixed header
+        const elementTop =
+            resultsRef.current.getBoundingClientRect().top + window.scrollY - safeOffset;
+
+        window.scrollTo({
+            top: Math.max(elementTop, 0),
+            behavior: 'smooth',
+        });
+    }, [resultsRef]);
+
+    useEffect(() => {
+        if (!shouldScrollToResults || loading) return;
+
+        scrollToResults();
+        setShouldScrollToResults(false);
+    }, [loading, scrollToResults, shouldScrollToResults]);
+
+    const handleRecommendClick = () => {
+        setShouldScrollToResults(true);
+        handleRecommend();
+    };
 
     return (
         <>
@@ -199,10 +224,10 @@ export default function DiscoverAiPage() {
                         {hint && <p className="text-sm text-amber-300">{hint}</p>}
                     </section>
 
-                    <div className="flex flex-wrap gap-4 items-center" ref={resultsRef}>
+                    <div className="flex flex-wrap gap-4 items-center">
                         <button
                             type="button"
-                            onClick={handleRecommend}
+                            onClick={handleRecommendClick}
                             disabled={!canRecommend || loading}
                             className={`cursor-pointer relative overflow-hidden px-7 py-3 rounded-2xl text-lg font-semibold transition-all shadow-[0_12px_40px_rgba(124,58,237,0.4)] focus:outline-none focus:ring-2 focus:ring-purple-400/50 w-full md:w-auto ${
                                 canRecommend
@@ -246,7 +271,7 @@ export default function DiscoverAiPage() {
                         </button>
                     </div>
 
-                    <section className="space-y-6 pb-8">
+                    <section className="space-y-6 pb-8" ref={resultsRef}>
                         <div className="flex items-center gap-3">
                             <h2 className="text-2xl font-semibold">Recommendations</h2>
                             <span className="text-sm text-gray-400">

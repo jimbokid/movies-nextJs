@@ -7,6 +7,9 @@ import { Metadata } from 'next';
 import CuratorEntryButton from '@/components/curator/CuratorEntryButton';
 import CuratorQuickChips from '@/components/curator/CuratorQuickChips';
 import { curatorUrlFromMovie } from '@/lib/curatorLink';
+import PosterImage from '@/components/movies/PosterImage';
+import Badge from '@/components/ui/Badge';
+import MovieGrid from '@/components/movies/MovieGrid';
 
 interface MovieDetailPageProps {
     params: Promise<{
@@ -61,112 +64,148 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
 
     const movie = data.data;
     const curatorHref = curatorUrlFromMovie({ from: 'movie' });
+    const title = movie.title || movie.original_name;
+    const releaseYear =
+        movie.release_date || movie.first_air_date
+            ? new Date(movie.release_date || movie.first_air_date || '').getFullYear()
+            : null;
+    const runtime =
+        movie.runtime || movie.episode_run_time?.[0]
+            ? `${movie.runtime || movie.episode_run_time?.[0]} min`
+            : null;
+    const rating =
+        typeof movie.vote_average === 'number' && movie.vote_average > 0
+            ? movie.vote_average.toFixed(1)
+            : null;
+    const posterSrc = movie.poster_path
+        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+        : null;
+    const backdropSrc = movie.backdrop_path
+        ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}`
+        : null;
+    const trailer = data.videos.results[0];
 
     return (
-        <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-gray-100">
-            <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -left-10 -top-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
-                <div className="absolute right-0 top-1/4 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
-                <div className="absolute left-1/3 bottom-0 h-80 w-80 rounded-full bg-amber-500/10 blur-[90px]" />
-            </div>
-            {/* Background header */}
-            <section className="relative w-full h-[40vh] overflow-hidden">
-                <Image
-                    src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
-                    alt={movie.title}
-                    fill
-                    priority
-                    className="object-cover opacity-40"
-                />
-                <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-gray-950/80 via-gray-950/30 to-transparent px-4 py-10">
-                    <div className="max-w-6xl px-0 sm:px-4 mx-auto text-left w-full">
-                        <h1 className="text-4xl font-bold mb-3">
-                            {movie.title || movie.original_name}
-                        </h1>
-                        <div className="flex items-center flex-wrap gap-3 text-sm text-gray-300">
-                            <p>
-                                ⭐{' '}
-                                <span className="font-semibold">
-                                    {movie.vote_average.toFixed(1)}
-                                </span>
+        <div className="space-y-10 pb-10">
+            <section className="relative isolate overflow-hidden">
+                {backdropSrc ? (
+                    <div className="absolute inset-0 opacity-30">
+                        <Image
+                            src={backdropSrc}
+                            alt={title}
+                            fill
+                            className="object-cover"
+                            priority
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg)] via-[var(--bg)]/70 to-[var(--bg)]" />
+                    </div>
+                ) : null}
+                <div className="page-shell relative py-8 md:py-10">
+                    <div className="grid gap-8 lg:grid-cols-[320px,1fr] lg:items-start">
+                        <PosterImage src={posterSrc} alt={title} priority className="rounded-2xl" />
+                        <div className="space-y-4">
+                            <p className="text-caption uppercase tracking-[0.18em] text-[var(--accent-2)]">
+                                Feature
                             </p>
-                            {movie.release_date && (
-                                <p>{new Date(movie.release_date).toLocaleDateString()}</p>
+                            <h1 className="text-display">{title}</h1>
+                            {movie.tagline && (
+                                <p className="text-headline text-[var(--text-muted)]">
+                                    “{movie.tagline}”
+                                </p>
                             )}
+                            <div className="flex flex-wrap items-center gap-2 text-caption">
+                                {releaseYear && <span>{releaseYear}</span>}
+                                {runtime && (
+                                    <>
+                                        <span aria-hidden>•</span>
+                                        <span>{runtime}</span>
+                                    </>
+                                )}
+                                {rating && (
+                                    <>
+                                        <span aria-hidden>•</span>
+                                        <span>⭐ {rating}</span>
+                                    </>
+                                )}
+                            </div>
                             <div className="flex flex-wrap gap-2">
                                 {movie.genres.map(g => (
-                                    <Link
-                                        key={g.id}
-                                        href={`/search/searchByGenre/${g.id}/${encodeURIComponent(
-                                            g.name,
-                                        )}`}
-                                        className="inline-flex items-center rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-200 hover:bg-gray-800 hover:border-gray-500 transition"
-                                        prefetch
-                                    >
+                                    <Badge key={g.id} variant="default">
                                         {g.name}
-                                    </Link>
+                                    </Badge>
                                 ))}
+                            </div>
+                            <div className="flex flex-wrap gap-3 pt-2">
+                                {trailer ? (
+                                    <a
+                                        className="inline-flex"
+                                        href={`https://www.youtube.com/watch?v=${trailer.key}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <Badge variant="accent">Watch trailer ↗</Badge>
+                                    </a>
+                                ) : null}
+                                <CuratorEntryButton
+                                    href={curatorHref}
+                                    variant="secondary"
+                                    size="sm"
+                                    ariaLabel="Open Curator for this movie"
+                                >
+                                    Open Curator
+                                </CuratorEntryButton>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Main content */}
-            <section className="max-w-6xl mx-auto px-4 py-10">
-                {/* Overview */}
-                <div className="mb-10">
-                    <h2 className="text-2xl font-semibold mb-3">Overview</h2>
-                    <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
+            <div className="page-shell space-y-8">
+                <div className="card-surface p-6 md:p-7 space-y-3">
+                    <h2 className="text-headline">Overview</h2>
+                    <p className="text-body text-[var(--text-muted)]">{movie.overview}</p>
                 </div>
 
                 {data.keywords && data.keywords.length > 0 && (
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-semibold mb-3">Keywords</h2>
+                    <div className="card-surface p-6 md:p-7 space-y-4">
+                        <h2 className="text-headline">Keywords</h2>
                         <div className="flex flex-wrap gap-2">
                             {data.keywords.map(keyword => (
-                                <Link
-                                    key={keyword.id}
-                                    href={`/search/searchByKeyword/${keyword.id}/${encodeURIComponent(
-                                        keyword.name
-                                    )}`}
-                                    className="inline-flex items-center rounded-full bg-gray-800/60 px-3 py-1 text-xs text-gray-200 hover:bg-gray-700 transition"
-                                    prefetch
-                                >
+                                <Badge key={keyword.id} variant="muted">
                                     {keyword.name}
-                                </Link>
+                                </Badge>
                             ))}
                         </div>
                     </div>
                 )}
 
-                {/* Videos */}
-                {data.videos.results.length > 0 && (
-                    <div className="mb-10">
-                        <h2 className="text-2xl font-semibold mb-3">Trailer</h2>
-                        <div className="aspect-video w-full rounded-xl overflow-hidden shadow-lg">
+                {trailer && (
+                    <div className="card-surface overflow-hidden">
+                        <div className="aspect-video w-full bg-[var(--surface-2)]">
                             <iframe
-                                src={`https://www.youtube.com/embed/${data.videos.results[0].key}`}
-                                title={data.videos.results[0].name}
+                                src={`https://www.youtube.com/embed/${trailer.key}`}
+                                title={trailer.name}
                                 allowFullScreen
-                                className="w-full h-full"
+                                className="h-full w-full"
                             />
                         </div>
                     </div>
                 )}
 
-                {/* Cast */}
                 {data.credits.cast.length > 0 && (
-                    <div className="mb-10">
-                        <h2 className="text-2xl font-semibold mb-4">Cast</h2>
-                        <div className="flex overflow-x-auto gap-4 pb-4">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-headline">Cast</h2>
+                            <span className="text-caption">Top billed</span>
+                        </div>
+                        <div className="flex overflow-x-auto gap-4 pb-2">
                             {data.credits.cast.slice(0, 15).map(actor => (
                                 <Link
                                     href={`/person/${actor.id}`}
                                     key={actor.id}
                                     className="flex-shrink-0 w-32 text-center"
                                 >
-                                    <div className="relative w-32 h-48 rounded-lg overflow-hidden bg-gray-800">
+                                    <div className="relative h-48 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-2)]">
                                         {actor.profile_path ? (
                                             <Image
                                                 src={`https://image.tmdb.org/t/p/w500${actor.profile_path}`}
@@ -175,29 +214,27 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                                                 className="object-cover"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">
+                                            <div className="grid h-full w-full place-items-center text-caption text-[var(--text-muted)]">
                                                 No Image
                                             </div>
                                         )}
                                     </div>
-                                    <p className="mt-2 text-sm font-medium">{actor.name}</p>
-                                    <p className="text-xs text-gray-400">{actor.character}</p>
+                                    <p className="mt-2 text-sm font-semibold">{actor.name}</p>
+                                    <p className="text-caption">{actor.character}</p>
                                 </Link>
                             ))}
                         </div>
                     </div>
                 )}
 
-                <div className="mb-10 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_16px_60px_rgba(0,0,0,0.4)]">
+                <div className="card-surface p-6 md:p-7 space-y-4">
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-1">
-                            <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                            <p className="text-caption uppercase tracking-[0.18em] text-[var(--accent-2)]">
                                 Curator
                             </p>
-                            <h2 className="text-2xl font-semibold text-white">
-                                More like this — Curator picks
-                            </h2>
-                            <p className="text-sm text-gray-300">
+                            <h2 className="text-headline">More like this</h2>
+                            <p className="text-caption">
                                 Jump into Curator with this movie as the starting point.
                             </p>
                         </div>
@@ -210,20 +247,23 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                             Open Curator
                         </CuratorEntryButton>
                     </div>
-                    <CuratorQuickChips source="movie" className="mt-4" />
+                    <CuratorQuickChips source="movie" className="mt-2" />
                 </div>
 
                 {data.similar.results.length > 0 && (
-                    <div>
-                        <h2 className="text-2xl font-semibold mb-4">Similar Movies</h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4">
-                            {data.similar.results.slice(0, 12).map(movie => (
-                                <MovieCard key={`${movie.id}-${movie.title}`} movie={movie} />
+                    <div className="space-y-3">
+                        <h2 className="text-headline">Similar titles</h2>
+                        <MovieGrid>
+                            {data.similar.results.slice(0, 12).map(similar => (
+                                <MovieCard
+                                    key={`${similar.id}-${similar.title}`}
+                                    movie={similar}
+                                />
                             ))}
-                        </div>
+                        </MovieGrid>
                     </div>
                 )}
-            </section>
-        </main>
+            </div>
+        </div>
     );
 }

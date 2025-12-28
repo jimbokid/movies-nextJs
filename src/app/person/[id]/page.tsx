@@ -4,6 +4,10 @@ import { getPersonalDetail } from '@/services/personalDetail';
 import React from 'react';
 import { Metadata } from 'next';
 import MovieCard from '@/components/MovieCard';
+import PageHeader from '@/components/layout/PageHeader';
+import Badge from '@/components/ui/Badge';
+import MovieGrid from '@/components/movies/MovieGrid';
+import EmptyState from '@/components/ui/EmptyState';
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -63,10 +67,14 @@ export default async function PersonDetailPage({ params }: Props) {
     const { data: person, movies } = data;
 
     return (
-        <div className="bg-gray-950 pt-18">
-            <div className="max-w-6xl mx-auto px-4 py-12 text-white ">
-                <div className="flex flex-col items-center gap-6">
-                    <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-gray-700 shadow-xl">
+        <div className="space-y-8 pb-10">
+            <PageHeader
+                title={person.name}
+                subtitle="Calm profile view for this cast member."
+            />
+            <div className="page-shell space-y-8">
+                <div className="card-surface p-6 md:p-7 flex flex-col gap-6 md:flex-row md:items-start">
+                    <div className="relative h-44 w-44 flex-shrink-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-2)]">
                         {person.profile_path ? (
                             <Image
                                 src={`https://image.tmdb.org/t/p/w400${person.profile_path}`}
@@ -75,41 +83,52 @@ export default async function PersonDetailPage({ params }: Props) {
                                 className="object-cover"
                             />
                         ) : (
-                            <div className="w-full h-full bg-gray-700 flex items-center justify-center text-gray-400">
+                            <div className="grid h-full w-full place-items-center text-caption text-[var(--text-muted)]">
                                 No image
                             </div>
                         )}
                     </div>
-
-                    <h1 className="text-3xl font-semibold">{person.name}</h1>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-300">
-                        <p>
-                            <span className="font-medium text-gray-400">Birthday: </span>
-                            {person.birthday ? moment(person.birthday).format('MMM DD, YYYY') : '—'}
-                        </p>
-                        <p>
-                            <span className="font-medium text-gray-400">Place of birth: </span>
-                            {person.place_of_birth || '—'}
-                        </p>
-                    </div>
-
-                    {person.biography && (
-                        <div className="mt-6 text-gray-300 leading-relaxed">
-                            <p>{person.biography}</p>
+                    <div className="space-y-4">
+                        <div className="flex flex-wrap gap-2 text-caption">
+                            {person.known_for_department && (
+                                <Badge variant="muted">{person.known_for_department}</Badge>
+                            )}
+                            {person.place_of_birth && (
+                                <Badge variant="default">{person.place_of_birth}</Badge>
+                            )}
                         </div>
-                    )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-caption">
+                            <p>
+                                <span className="font-semibold text-[var(--text)]">Birthday: </span>
+                                {person.birthday ? moment(person.birthday).format('MMM DD, YYYY') : '—'}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-[var(--text)]">Known for: </span>
+                                {person.known_for_department || '—'}
+                            </p>
+                        </div>
+                        {person.biography && (
+                            <p className="text-body text-[var(--text-muted)] leading-relaxed">
+                                {person.biography}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
-                {movies && movies.length > 0 && (
-                    <div className="mt-12">
-                        <h2 className="text-2xl font-semibold mb-4">Filmography</h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {movies && movies.length > 0 ? (
+                    <div className="space-y-3">
+                        <h2 className="text-headline">Selected filmography</h2>
+                        <MovieGrid>
                             {movies.slice(0, 20).map(movie => (
                                 <MovieCard key={`${movie.id}-${movie.title}`} movie={movie} />
                             ))}
-                        </div>
+                        </MovieGrid>
                     </div>
+                ) : (
+                    <EmptyState
+                        title="No titles yet."
+                        message="We couldn’t find credits for this profile."
+                    />
                 )}
             </div>
         </div>

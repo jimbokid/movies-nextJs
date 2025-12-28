@@ -1,0 +1,27 @@
+:root {
+    /* Color system */
+    --bg: #0e0f14;
+    --surface: #131621;
+    --surface-2: #181c29;
+    --text: #f2f3f7;
+    --text-muted: #a9afc3;
+    --accent: #8f88ff;
+    --accent-2: #7bd5ff;
+    --border: rgba(255, 255, 255, 0.08);
+
+    /* Radii */
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --r-2xl: 20px;
+
+    /* Shadows */
+    --shadow-sm: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 18px 60px rgba(0, 0, 0, 0.45);
+
+    /* Spacing */
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+}

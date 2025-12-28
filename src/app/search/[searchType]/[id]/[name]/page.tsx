@@ -5,6 +5,10 @@ import { useRef } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import MovieCard from '@/components/MovieCard';
 import LoadingSearchPage from '@/app/search/[searchType]/[id]/[name]/loading';
+import PageHeader from '@/components/layout/PageHeader';
+import MovieGrid from '@/components/movies/MovieGrid';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 
 interface SearchPageProps {
     params: {
@@ -43,52 +47,58 @@ export default function SearchPage({ params }: SearchPageProps) {
 
     if (isError)
         return (
-            <div className="flex items-center justify-center min-h-screen text-red-500">
-                Failed to load results 😢
+            <div className="page-shell py-10">
+                <ErrorState message="Failed to load results. Please try again." />
             </div>
         );
 
     if (data.results.length === 0)
         return (
-            <main className="min-h-screen bg-gray-950 text-white">
-                <div className="max-w-6xl mx-auto px-4 py-10">
-                    <h1 className="text-3xl font-bold mb-8 tracking-tight">{title}</h1>
-                    <div className="flex items-center justify-center min-h-[40vh] text-neutral-400">
-                        No results found.
-                    </div>
+            <div className="space-y-6 pb-10">
+                <PageHeader
+                    title={title}
+                    subtitle="CineView kept it quiet for this filter."
+                />
+                <div className="page-shell">
+                    <EmptyState
+                        title="Nothing loud here."
+                        message="Try adjusting the filter to find a match."
+                    />
                 </div>
-            </main>
+            </div>
         );
 
     return (
-        <main className="min-h-screen bg-gray-950 text-white pt-18">
-            <div className="max-w-6xl mx-auto px-4 py-10">
-                <h1 className="text-3xl font-bold mb-8 tracking-tight">{title}</h1>
-
-                {/* Movies Grid */}
+        <div className="space-y-6 pb-10">
+            <PageHeader
+                title={title}
+                subtitle="Curated titles based on your filter."
+            />
+            <div className="page-shell">
                 <InfiniteScroll
                     dataLength={data.results.length}
                     next={fetchNextPage}
                     hasMore={!!hasNextPage}
-                    loader={false}
+                    loader={null}
                 >
-                    <div className="grid gap-6 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    <MovieGrid>
                         {data.results.map(movie => (
                             <MovieCard
                                 key={`${movie.id}-${movie.title || movie.name}`}
                                 movie={movie}
                             />
                         ))}
-                    </div>
+                    </MovieGrid>
                 </InfiniteScroll>
 
-                {/* Infinite Scroll Loader */}
-                <div ref={loaderRef} className="h-16 flex items-center justify-center mt-10">
+                <div ref={loaderRef} className="h-12 flex items-center justify-center mt-4">
                     {isLoading && (
-                        <span className="text-neutral-400 animate-pulse">Loading more...</span>
+                        <span className="text-caption text-[var(--text-muted)]">
+                            Loading more…
+                        </span>
                     )}
                 </div>
             </div>
-        </main>
+        </div>
     );
 }

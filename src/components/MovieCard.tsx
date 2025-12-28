@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { MovieItem } from '@/types/dashboard';
+import PosterImage from './movies/PosterImage';
+import Badge from './ui/Badge';
+import { cn } from '@/utils/cn';
 
 interface MovieProps {
     movie: MovieItem;
@@ -14,42 +16,40 @@ interface MovieProps {
 const MovieCard: React.FC<MovieProps> = ({ movie, type = 'movie', priority = false }) => {
     const title = movie.title || movie.name || movie.original_name;
     const linkHref = `/detail/${type}/${movie.id}`;
+    const year =
+        movie.release_date || movie.first_air_date
+            ? new Date(movie.release_date || movie.first_air_date || '').getFullYear()
+            : null;
+    const rating =
+        typeof movie.vote_average === 'number' && movie.vote_average > 0
+            ? movie.vote_average.toFixed(1)
+            : null;
+    const posterSrc = movie.poster_path
+        ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
+        : null;
 
     return (
         <Link
             href={linkHref}
-            className="group aspect-[2/3] relative overflow-hidden rounded-2xl bg-neutral-800 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
+            className={cn(
+                'group relative flex h-full flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-sm transition-transform duration-200',
+                'hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]',
+            )}
             prefetch
+            aria-label={title}
         >
-            {/* Poster */}
-            <div className="relative w-full h-full">
-                {movie.poster_path ? (
-                    <Image
-                        priority={priority}
-                        loading={priority ? 'eager' : 'lazy'}
-                        fetchPriority={priority ? 'high' : 'auto'}
-                        src={`https://image.tmdb.org/t/p/w342${movie.poster_path}`}
-                        alt={title}
-                        fill
-                        sizes="
-                            (max-width: 480px) 45vw,
-                            (max-width: 768px) 33vw,
-                            (max-width: 1200px) 25vw,
-                            20vw
-                        "
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                ) : (
-                    <div className="w-full h-full bg-neutral-700 flex items-center justify-center text-neutral-400 text-sm">
-                        No Image
-                    </div>
-                )}
-            </div>
+            <PosterImage src={posterSrc} alt={title} priority={priority} />
 
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                <h3 className="text-lg font-semibold truncate">{title}</h3>
-                <p className="text-sm text-neutral-300 mt-1">⭐ {movie.vote_average.toFixed(1)}</p>
+            <div className="flex items-start gap-3 px-1 pb-1">
+                <div className="space-y-1">
+                    <p className="text-caption">{year ?? '—'}</p>
+                    <h3 className="text-body font-semibold leading-tight line-clamp-2">{title}</h3>
+                </div>
+                {rating ? (
+                    <Badge variant="accent" className="ml-auto">
+                        ⭐ {rating}
+                    </Badge>
+                ) : null}
             </div>
         </Link>
     );

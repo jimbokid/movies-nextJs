@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import ReactQueryProvider from '@/providers/ReactQueryProvider';
-import Header from '@/components/Header';
 import ScrollToTop from '@/components/ScrollToTop';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import SearchHotkey from '@/components/SearchHotkey';
 import { Analytics } from '@vercel/analytics/next';
+import AppShell from '@/components/layout/AppShell';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -57,15 +57,14 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950`}>
+            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
                 <Analytics />
                 <SearchHotkey />
                 <SpeedInsights />
                 <ScrollToTop />
-                <Header />
-                <main className="flex-1">
-                    <ReactQueryProvider>{children}</ReactQueryProvider>
-                </main>
+                <ReactQueryProvider>
+                    <AppShell>{children}</AppShell>
+                </ReactQueryProvider>
             </body>
         </html>
     );

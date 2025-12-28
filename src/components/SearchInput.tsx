@@ -21,10 +21,10 @@ export default function SearchInput({
 
     return (
         <div className="w-full sm:w-[420px]">
-            <div className="relative group">
+            <div className="relative">
                 <input
                     ref={inputRef}
-                    className="w-full rounded-2xl bg-white/5 border border-white/10 px-5 py-3 text-sm text-white placeholder:text-neutral-400 shadow-[0_10px_20px_rgba(0,0,0,0.55)] outline-none backdrop-blur-xl transition-colors transition-shadow focus:border-purple-400/70 focus:shadow-[0_0px_20px_rgba(129,140,248,0.55)]"
+                    className="w-full rounded-xl bg-[var(--surface-2)] border border-[var(--border)] px-4 py-3 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] shadow-[0_12px_28px_rgba(0,0,0,0.35)] outline-none transition focus:border-[color-mix(in_srgb,var(--accent)_40%,transparent)]"
                     defaultValue={value ?? ''}
                     onChange={e => onChange(e.target.value)}
                     placeholder={placeholder}

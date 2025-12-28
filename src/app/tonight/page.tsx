@@ -230,11 +230,13 @@ function TonightHero({
 }
 
 export default function TonightPage() {
-    const { pickQuery, movieQuery, rerollMutation } = useTonightPick();
+    const { pickQuery, movieQuery, rerollMutation, whyMutation } = useTonightPick();
     const [isWhyOpen, setIsWhyOpen] = useState(false);
 
-    const intentLine = pickQuery.data?.intentLine ?? 'A calm, cinematic pick for tonight.';
-    const whyText = pickQuery.data?.whyText;
+    const intentLine =
+        whyMutation.data?.intentLine ??
+        'One careful pick for tonight. Calmly loading a more tailored note.';
+    const whyText = whyMutation.data?.whyText;
     const canReroll = pickQuery.data?.rerollAvailable ?? false;
 
     const isLoading = pickQuery.isLoading || (!movieQuery.data && movieQuery.isLoading);
@@ -251,7 +253,27 @@ export default function TonightPage() {
 
     useEffect(() => {
         setIsWhyOpen(false);
-    }, [pickQuery.data?.movieId]);
+        whyMutation.reset();
+    }, [pickQuery.data?.movieId, whyMutation]);
+
+    useEffect(() => {
+        if (
+            movieQuery.isSuccess &&
+            pickQuery.data &&
+            !whyMutation.data &&
+            !whyMutation.isPending &&
+            !whyMutation.isError
+        ) {
+            whyMutation.mutate();
+        }
+    }, [
+        movieQuery.isSuccess,
+        pickQuery.data,
+        whyMutation.data,
+        whyMutation.isPending,
+        whyMutation.isError,
+        whyMutation,
+    ]);
 
     useEffect(() => {
         if (rerollMutation.isSuccess && pickQuery.data) {
@@ -266,6 +288,9 @@ export default function TonightPage() {
         setIsWhyOpen(prev => {
             const next = !prev;
             if (next && pickQuery.data) {
+                if (!whyMutation.data && !whyMutation.isPending) {
+                    whyMutation.mutate();
+                }
                 console.log('tonight_why_opened', {
                     dateKey: pickQuery.data.dateKey,
                     movieId: pickQuery.data.movieId,
@@ -327,7 +352,7 @@ export default function TonightPage() {
                     <TonightHero
                         movie={movieQuery.data}
                         intentLine={intentLine}
-                        whyText={whyText}
+                        whyText={whyMutation.isPending ? undefined : whyText}
                         isWhyOpen={isWhyOpen}
                         onToggleWhy={handleToggleWhy}
                         onWatch={handleWatch}

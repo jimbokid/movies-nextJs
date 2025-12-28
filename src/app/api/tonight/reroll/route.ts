@@ -8,24 +8,6 @@ interface RerollBody {
     dateKey?: string;
 }
 
-function toResponseBody(record: {
-    dateKey: string;
-    movieId: number;
-    intentLine: string;
-    whyText?: string;
-    rerolled: boolean;
-    resetAt: string;
-    source?: 'llm' | 'fallback';
-    resolution?: 'tmdbId' | 'search' | 'fallback';
-}): TonightPickResponse {
-    const { resetAt, ...rest } = record;
-    return {
-        ...rest,
-        rerollAvailable: !record.rerolled,
-        resetAt,
-    };
-}
-
 export async function POST(request: Request) {
     const body = ((await request.json().catch(() => null)) ?? {}) as RerollBody;
     const dateKey = isValidDateKey(body.dateKey) ? body.dateKey : getKyivDateKey();
@@ -35,12 +17,13 @@ export async function POST(request: Request) {
         const existing = await getTonightPick(dateKey);
 
         if (existing?.rerolled) {
-            return NextResponse.json(
-                toResponseBody({
-                    ...existing,
-                    resetAt,
-                }),
-            );
+            const response: TonightPickResponse = {
+                dateKey: existing.dateKey,
+                movieId: existing.movieId,
+                rerollAvailable: false,
+                resetAt,
+            };
+            return NextResponse.json(response);
         }
 
         const generated = await buildTonightPick(dateKey, existing?.movieId);
@@ -48,27 +31,21 @@ export async function POST(request: Request) {
         const record = {
             dateKey,
             movieId: generated.movieId,
-            intentLine: generated.intentLine,
-            whyText: generated.whyText,
             rerolled: true,
             previousMovieId: existing?.movieId,
             createdAt: existing?.createdAt ?? new Date().toISOString(),
-            seedContext: generated.seedContext,
-            source: generated.source,
-            resolution: generated.resolution,
-            llmModel: generated.llmModel,
-            rawLLMResponse: generated.rawLLMResponse,
-            validationFailed: generated.validationFailed,
         };
 
         await saveTonightPick(record);
 
-        return NextResponse.json(
-            toResponseBody({
-                ...record,
-                resetAt,
-            }),
-        );
+        const response: TonightPickResponse = {
+            dateKey: record.dateKey,
+            movieId: record.movieId,
+            rerollAvailable: false,
+            resetAt,
+        };
+
+        return NextResponse.json(response);
     } catch (error) {
         console.error('Failed to reroll tonight pick', error);
         return NextResponse.json(

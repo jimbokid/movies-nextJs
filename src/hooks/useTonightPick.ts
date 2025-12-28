@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API_PATH, API_TOKEN, LANGUAGE } from '@/constants/appConstants';
-import { TonightMovie, TonightPickResponse } from '@/types/tonight';
+import { TonightMovie, TonightPickResponse, TonightWhyResponse } from '@/types/tonight';
 
 async function fetchTonightPick(): Promise<TonightPickResponse> {
     const response = await fetch('/api/tonight');
@@ -32,6 +32,18 @@ async function rerollTonightPick(dateKey?: string): Promise<TonightPickResponse>
     return response.json();
 }
 
+async function fetchWhyCopy(movieId: number, dateKey?: string): Promise<TonightWhyResponse> {
+    const response = await fetch('/api/tonight/why', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movieId, dateKey }),
+    });
+    if (!response.ok) {
+        throw new Error('Why copy failed');
+    }
+    return response.json();
+}
+
 export default function useTonightPick() {
     const queryClient = useQueryClient();
 
@@ -55,8 +67,17 @@ export default function useTonightPick() {
         onSuccess: data => {
             queryClient.setQueryData(['tonight-pick'], data);
             queryClient.invalidateQueries({ queryKey: ['tonight-movie'] });
+            queryClient.removeQueries({ queryKey: ['tonight-why'] });
         },
     });
 
-    return { pickQuery, movieQuery, rerollMutation };
+    const whyMutation = useMutation({
+        mutationKey: ['tonight-why', pickQuery.data?.movieId],
+        mutationFn: () => {
+            if (!pickQuery.data?.movieId) throw new Error('No movie to explain');
+            return fetchWhyCopy(pickQuery.data.movieId, pickQuery.data.dateKey);
+        },
+    });
+
+    return { pickQuery, movieQuery, rerollMutation, whyMutation };
 }

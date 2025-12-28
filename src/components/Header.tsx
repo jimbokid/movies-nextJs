@@ -9,6 +9,7 @@ const navItems = [
     { href: '/', label: 'Dashboard' },
     { href: '/search?kind=movie', label: 'Search' },
     { href: buildCuratorUrl({ from: 'header' }), label: 'Curator' },
+    { href: '/tonight', label: 'Tonight' },
     { href: '/about', label: 'About' },
 ];
 

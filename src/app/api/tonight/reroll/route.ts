@@ -15,6 +15,8 @@ function toResponseBody(record: {
     whyText?: string;
     rerolled: boolean;
     resetAt: string;
+    source?: 'llm' | 'fallback';
+    resolution?: 'tmdbId' | 'search' | 'fallback';
 }): TonightPickResponse {
     const { resetAt, ...rest } = record;
     return {
@@ -52,6 +54,11 @@ export async function POST(request: Request) {
             previousMovieId: existing?.movieId,
             createdAt: existing?.createdAt ?? new Date().toISOString(),
             seedContext: generated.seedContext,
+            source: generated.source,
+            resolution: generated.resolution,
+            llmModel: generated.llmModel,
+            rawLLMResponse: generated.rawLLMResponse,
+            validationFailed: generated.validationFailed,
         };
 
         await saveTonightPick(record);

@@ -5,6 +5,8 @@ export interface TonightPickResponse {
     whyText?: string;
     rerollAvailable: boolean;
     resetAt: string;
+    source?: 'llm' | 'fallback';
+    resolution?: 'tmdbId' | 'search' | 'fallback';
 }
 
 export interface TonightPickRecord {
@@ -16,6 +18,11 @@ export interface TonightPickRecord {
     createdAt: string;
     previousMovieId?: number;
     seedContext?: Record<string, unknown>;
+    source?: 'llm' | 'fallback';
+    resolution?: 'tmdbId' | 'search' | 'fallback';
+    llmModel?: string;
+    rawLLMResponse?: unknown;
+    validationFailed?: boolean;
 }
 
 export interface TonightMovie {

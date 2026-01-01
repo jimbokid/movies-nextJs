@@ -3,7 +3,6 @@ import { DashboardPayload } from '@/types/dashboard';
 import {
     API_PATH,
     API_TOKEN,
-    CURRENT_YEAR,
     INCLUDE_ADULT,
     LANGUAGE,
     REGION
@@ -19,8 +18,7 @@ export const Dashboard = {
                     region: REGION,
                     sort_by: 'popularity.desc',
                     include_adult: INCLUDE_ADULT,
-                    page,
-                    primary_release_year: CURRENT_YEAR
+                    page
                 },
             })
             .then(res => res.data),

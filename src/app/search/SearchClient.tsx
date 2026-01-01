@@ -9,9 +9,6 @@ import SearchInput from '@/components/SearchInput';
 import { useGlobalSearch } from '@/hooks/useGlobalSearch';
 import MovieCard from '@/components/MovieCard';
 import PersonCard from '@/components/PersonCard';
-import CuratorEntryButton from '@/components/curator/CuratorEntryButton';
-import CuratorQuickChips from '@/components/curator/CuratorQuickChips';
-import { curatorUrlFromSearch } from '@/lib/curatorLink';
 
 type Kind = 'movie' | 'tv' | 'person';
 
@@ -24,7 +21,6 @@ export default function SearchClient() {
     // ---- Read from URL (single source of truth) ----
     const urlKind = (searchParams.get('kind') as Kind) || DEFAULT_KIND;
     const urlQuery = searchParams.get('q') ?? '';
-    const trimmedQuery = urlQuery.trim();
 
     const [localQuery, setLocalQuery] = useState(urlQuery);
 
@@ -84,9 +80,6 @@ export default function SearchClient() {
     }, [urlKind, urlQuery]);
 
     const showInitialSkeleton = isLoading && data.results.length === 0;
-    const totalResults = data.totalResults;
-    const showCuratorPanel = Boolean(trimmedQuery);
-    const highlightCuratorPanel = !isLoading && showCuratorPanel && totalResults <= 10;
 
     return (
         <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-white pt-18">
@@ -108,43 +101,6 @@ export default function SearchClient() {
                         />
                     </div>
                 </div>
-
-                {showCuratorPanel && (
-                    <section
-                        className={`rounded-2xl border bg-white/5 p-4 md:p-5 shadow-[0_16px_60px_rgba(0,0,0,0.4)] ${
-                            highlightCuratorPanel
-                                ? 'border-purple-400/50 ring-1 ring-purple-500/25'
-                                : 'border-white/10'
-                        }`}
-                    >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <div className="space-y-1">
-                                <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
-                                    Curator
-                                </p>
-                                <h2 className="text-xl font-semibold">Stuck? Let a curator pick.</h2>
-                                <p className="text-sm text-gray-300">
-                                    {highlightCuratorPanel
-                                        ? 'Few results here—jump to Curator with your search baked in.'
-                                        : 'Open Curator anytime with this search as context.'}
-                                </p>
-                            </div>
-                            <CuratorEntryButton
-                                href={curatorUrlFromSearch(trimmedQuery || '', { from: 'search' })}
-                                variant={highlightCuratorPanel ? 'primary' : 'secondary'}
-                                size="sm"
-                                ariaLabel="Open Curator from search"
-                            >
-                                Open Curator
-                            </CuratorEntryButton>
-                        </div>
-                        <CuratorQuickChips
-                            source="search"
-                            query={trimmedQuery}
-                            className="mt-3"
-                        />
-                    </section>
-                )}
 
                 {/* Error */}
                 {isError && !showInitialSkeleton && (

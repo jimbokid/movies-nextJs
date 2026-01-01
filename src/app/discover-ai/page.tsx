@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence, type Variants, stagger } from 'framer-motion';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import Heading from '@/app/discover-ai/Heading';
@@ -72,36 +71,6 @@ export default function DiscoverAiPage() {
         resultsRef,
     } = useDiscoverAi();
     const [shouldScrollToResults, setShouldScrollToResults] = useState(false);
-    const [modeFromUrlApplied, setModeFromUrlApplied] = useState(false);
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const pathname = usePathname();
-
-    useEffect(() => {
-        const modeParam = searchParams.get('mode');
-        const normalizedMode = modeParam === 'all' ? 'all' : 'random';
-
-        setMode(prev => (prev === normalizedMode ? prev : normalizedMode));
-        setModeFromUrlApplied(true);
-    }, [searchParams, setMode]);
-
-    useEffect(() => {
-        if (!modeFromUrlApplied) return;
-
-        const shouldSyncModeParam = mode === 'all' || searchParams.has('mode');
-        if (!shouldSyncModeParam) return;
-
-        const params = new URLSearchParams(searchParams);
-        const currentQuery = params.toString();
-
-        params.set('mode', mode);
-        const nextQuery = params.toString();
-
-        if (currentQuery === nextQuery) return;
-
-        const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
-        router.replace(nextUrl, { scroll: false });
-    }, [mode, modeFromUrlApplied, pathname, router, searchParams]);
 
     const scrollToResults = useCallback(() => {
         if (!resultsRef.current) return;

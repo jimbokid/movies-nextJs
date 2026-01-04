@@ -7,6 +7,7 @@ import { Metadata } from 'next';
 import CuratorEntryButton from '@/components/curator/CuratorEntryButton';
 import CuratorQuickChips from '@/components/curator/CuratorQuickChips';
 import { curatorUrlFromMovie } from '@/lib/curatorLink';
+import WhereToWatchPanel from '@/features/watch/ui/WhereToWatchPanel';
 
 interface MovieDetailPageProps {
     params: Promise<{
@@ -61,6 +62,9 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
 
     const movie = data.data;
     const curatorHref = curatorUrlFromMovie({ from: 'movie' });
+    const releaseYear =
+        movie?.release_date?.slice(0, 4) ?? movie?.first_air_date?.slice(0, 4) ?? undefined;
+    const watchType = type === 'tv' ? 'tv' : 'movie';
 
     return (
         <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-950 text-gray-100">
@@ -119,6 +123,13 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                     <h2 className="text-2xl font-semibold mb-3">Overview</h2>
                     <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
                 </div>
+
+                <WhereToWatchPanel
+                    id={id}
+                    type={watchType}
+                    title={movie.title || movie.original_name}
+                    year={releaseYear}
+                />
 
                 {data.keywords && data.keywords.length > 0 && (
                     <div className="mb-8">

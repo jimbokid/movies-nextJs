@@ -71,3 +71,16 @@ npm install
 
 # 4. Run development server
 npm run dev
+```
+
+### 🔑 Environment variables
+
+Create a `.env.local` file (server-only):
+
+```
+MOVIE_OF_THE_NIGHT_API_KEY=your_rapidapi_key
+MOVIE_OF_THE_NIGHT_BASE_URL=https://streaming-availability.p.rapidapi.com
+OPENAI_API_KEY=your_openai_key
+```
+
+Add the same variables in your Vercel project settings. Never expose these keys in client-side bundles.

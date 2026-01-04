@@ -52,7 +52,7 @@ export async function GET(request: Request) {
         );
     }
 
-    const region = detectRegion(headers());
+    const region = detectRegion(await headers());
 
     let primary: WhereToWatch | null = null;
 

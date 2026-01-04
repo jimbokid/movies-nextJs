@@ -110,22 +110,20 @@ If you cannot find allowed providers, return an empty JSON array.`,
         text: {
             format: {
                 type: 'json_schema',
-                json_schema: {
-                    name: 'where_to_watch_links',
-                    strict: true,
-                    schema: {
-                        type: 'array',
-                        minItems: 0,
-                        maxItems: 5,
-                        items: {
-                            type: 'object',
-                            required: ['name', 'link', 'type'],
-                            additionalProperties: false,
-                            properties: {
-                                name: { type: 'string', minLength: 1 },
-                                link: { type: 'string', format: 'uri' },
-                                type: { const: 'link' },
-                            },
+                name: 'where_to_watch_links',
+                strict: true,
+                schema: {
+                    type: 'array',
+                    minItems: 0,
+                    maxItems: 5,
+                    items: {
+                        type: 'object',
+                        required: ['name', 'link', 'type'],
+                        additionalProperties: false,
+                        properties: {
+                            name: { type: 'string', minLength: 1 },
+                            link: { type: 'string', format: 'uri' },
+                            type: { const: 'link' },
                         },
                     },
                 },

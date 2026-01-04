@@ -7,7 +7,7 @@ function isValidCountryCode(code: string | null) {
     return /^[a-z]{2}$/.test(normalized);
 }
 
-export function detectRegion(headerList: Pick<Headers, 'get'>): string {
+export function detectRegion(headerList: Headers): string {
     for (const key of COUNTRY_HEADER_KEYS) {
         const value = headerList.get(key);
         if (isValidCountryCode(value)) {

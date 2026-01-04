@@ -69,10 +69,15 @@ async function parseResponseText(text: string): Promise<AiLink[]> {
 
     try {
         const parsed = JSON.parse(trimmed);
-        return Array.isArray(parsed) ? (parsed as AiLink[]) : [];
+        if (Array.isArray(parsed)) return parsed as AiLink[];
+        if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { links?: unknown }).links)) {
+            return (parsed as { links: AiLink[] }).links;
+        }
     } catch {
         return [];
     }
+
+    return [];
 }
 
 export async function aiFindWhereToWatch(params: {
@@ -99,8 +104,8 @@ export async function aiFindWhereToWatch(params: {
                 content: `Find 3-5 official watch providers for the ${type} "${title}"${releasePart} that are available in country code ${regionLabel}.
 Use the web_search tool to verify availability. Prefer national services in that country when possible.
 Only include links from this allowlist: ${ALLOWED_DOMAINS.join(', ')}.
-Return an array of JSON objects with: name (provider), type ("link"), link (direct title URL).
-If you cannot find allowed providers, return an empty JSON array.`,
+Return an object with a "links" array of JSON objects: name (provider), type ("link"), link (direct title URL).
+If you cannot find allowed providers, return { "links": [] }.`,
                 type: 'message',
             },
         ],
@@ -113,19 +118,26 @@ If you cannot find allowed providers, return an empty JSON array.`,
                 name: 'where_to_watch_links',
                 strict: true,
                 schema: {
-                    type: 'array',
-                    minItems: 0,
-                    maxItems: 5,
-                    items: {
-                        type: 'object',
-                        required: ['name', 'link', 'type'],
-                        additionalProperties: false,
-                        properties: {
-                            name: { type: 'string', minLength: 1 },
-                            link: { type: 'string', format: 'uri' },
-                            type: { const: 'link' },
+                    type: 'object',
+                    additionalProperties: false,
+                    properties: {
+                        links: {
+                            type: 'array',
+                            minItems: 0,
+                            maxItems: 5,
+                            items: {
+                                type: 'object',
+                                required: ['name', 'link', 'type'],
+                                additionalProperties: false,
+                                properties: {
+                                    name: { type: 'string', minLength: 1 },
+                                    link: { type: 'string', format: 'uri' },
+                                    type: { const: 'link' },
+                                },
+                            },
                         },
                     },
+                    required: ['links'],
                 },
             },
         },

@@ -98,16 +98,7 @@ function MovieCard({ pick, priority }: { pick: CuratedPick; priority?: boolean }
         </div>
     );
 
-    if (!tmdb_id) return content;
-
-    return (
-        <Link
-            href={`/detail/movie/${tmdb_id}`}
-            className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
-        >
-            {content}
-        </Link>
-    );
+    return content;
 }
 
 export default function CuratorResults({
@@ -199,6 +190,16 @@ export default function CuratorResults({
                                         );
                                     })}
                                 </div>
+                                {primary?.reason && (
+                                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-purple-500/10 to-white/5 p-4">
+                                        <p className="text-xs uppercase tracking-[0.18em] text-purple-200/80">
+                                            Why this pick
+                                        </p>
+                                        <p className="mt-2 text-sm leading-relaxed text-gray-200">
+                                            {primary.reason}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

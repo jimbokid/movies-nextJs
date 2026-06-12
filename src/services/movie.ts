@@ -1,47 +1,60 @@
 import axios from 'axios';
 import { API_PATH, API_TOKEN, LANGUAGE } from '@/constants/appConstants';
 import { genreGroup } from '@/utils/movieDetailHelpers';
-import { MovieDetailPayload } from '@/types/movie';
+import { Genres, MovieDetailPayload } from '@/types/movie';
 
 export const MovieDetail = {
     async getMovieDetail(id: string, type: string): Promise<MovieDetailPayload> {
-        try {
-            const urls = [
-                `${API_PATH}${type}/${id}`,
-                `${API_PATH}${type}/${id}/similar`,
-                `${API_PATH}${type}/${id}/credits`,
-                `${API_PATH}${type}/${id}/images`,
-                `${API_PATH}genre/movie/list`,
-                `${API_PATH}${type}/${id}/videos`,
-                `${API_PATH}${type}/${id}/keywords`,
-            ];
-
-            const requests = urls.map(url =>
-                axios.get(url, {
+        const get = <T>(path: string): Promise<T> =>
+            axios
+                .get(`${API_PATH}${path}`, {
                     params: {
                         api_key: API_TOKEN,
                         language: LANGUAGE,
                     },
-                }),
-            );
+                })
+                .then(res => res.data);
 
-            const [movie, similar, credits, images, genre, videos, keywords] =
-                await axios.all(requests);
+        // Only the main movie request is fatal — secondary sections degrade to empty.
+        const [movie, similar, credits, images, genre, videos, keywords] = await Promise.all([
+            get<MovieDetailPayload['data']>(`${type}/${id}`).catch(error => {
+                console.error('Failed to fetch movie detail:', error?.message ?? error);
+                throw new Error('Movie detail fetch failed');
+            }),
+            get<MovieDetailPayload['similar']>(`${type}/${id}/similar`).catch(() => ({
+                results: [],
+            })),
+            get<MovieDetailPayload['credits']>(`${type}/${id}/credits`).catch(() => ({
+                cast: [],
+                crew: [] as MovieDetailPayload['credits']['crew'],
+            })),
+            get<MovieDetailPayload['images']>(`${type}/${id}/images`).catch(() => ({
+                backdrops: [] as MovieDetailPayload['images']['backdrops'],
+                id: null,
+                logos: [] as MovieDetailPayload['images']['logos'],
+                posters: [] as MovieDetailPayload['images']['posters'],
+            })),
+            get<{ genres: Genres }>('genre/movie/list').catch(() => ({
+                genres: [] as Genres,
+            })),
+            get<MovieDetailPayload['videos']>(`${type}/${id}/videos`).catch(() => ({
+                results: [],
+            })),
+            get<{ keywords: MovieDetailPayload['keywords'] }>(`${type}/${id}/keywords`).catch(
+                () => ({ keywords: [] }),
+            ),
+        ]);
 
-            const genreList: { [id: string]: string } = genreGroup(genre.data.genres);
+        const genreList: { [id: string]: string } = genreGroup(genre.genres);
 
-            return {
-                data: movie.data,
-                similar: similar.data,
-                credits: credits.data,
-                images: images.data,
-                genreList,
-                videos: videos.data,
-                keywords: keywords.data.keywords,
-            };
-        } catch (error) {
-            console.error('Failed to fetch detail details:', error);
-            throw new Error('Movie detail fetch failed');
-        }
+        return {
+            data: movie,
+            similar,
+            credits,
+            images,
+            genreList,
+            videos,
+            keywords: keywords.keywords ?? [],
+        };
     },
 };

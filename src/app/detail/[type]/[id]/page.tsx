@@ -6,6 +6,8 @@ import MovieCard from '@/components/MovieCard';
 import { Metadata } from 'next';
 import CuratorEntryButton from '@/components/curator/CuratorEntryButton';
 import CuratorQuickChips from '@/components/curator/CuratorQuickChips';
+import KeywordChips from '@/components/KeywordChips';
+import Rating from '@/components/Rating';
 import { curatorUrlFromMovie } from '@/lib/curatorLink';
 
 interface MovieDetailPageProps {
@@ -84,12 +86,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                             {movie.title || movie.original_name}
                         </h1>
                         <div className="flex items-center flex-wrap gap-3 text-sm text-gray-300">
-                            <p>
-                                ⭐{' '}
-                                <span className="font-semibold">
-                                    {movie.vote_average.toFixed(1)}
-                                </span>
-                            </p>
+                            <Rating value={movie.vote_average} />
                             {movie.release_date && (
                                 <p>{new Date(movie.release_date).toLocaleDateString()}</p>
                             )}
@@ -119,26 +116,6 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                     <h2 className="text-2xl font-semibold mb-3">Overview</h2>
                     <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
                 </div>
-
-                {data.keywords && data.keywords.length > 0 && (
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-semibold mb-3">Keywords</h2>
-                        <div className="flex flex-wrap gap-2">
-                            {data.keywords.map(keyword => (
-                                <Link
-                                    key={keyword.id}
-                                    href={`/search/searchByKeyword/${keyword.id}/${encodeURIComponent(
-                                        keyword.name
-                                    )}`}
-                                    className="inline-flex items-center rounded-full bg-gray-800/60 px-3 py-1 text-xs text-gray-200 hover:bg-gray-700 transition"
-                                    prefetch
-                                >
-                                    {keyword.name}
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 {/* Videos */}
                 {data.videos.results.length > 0 && (
@@ -185,6 +162,13 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                                 </Link>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {data.keywords && data.keywords.length > 0 && (
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-semibold mb-3">Keywords</h2>
+                        <KeywordChips keywords={data.keywords} />
                     </div>
                 )}
 

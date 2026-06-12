@@ -7,6 +7,10 @@ export interface MovieItem {
     poster_path: string;
     character: string;
     id: number;
+    backdrop_path?: string | null;
+    overview?: string;
+    release_date?: string;
+    first_air_date?: string;
 }
 
 export interface DashboardPayload {

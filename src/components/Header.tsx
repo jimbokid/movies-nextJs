@@ -20,9 +20,9 @@ export default function Header() {
             <div className="max-w-6xl mx-auto px-4 py-3 grid grid-cols-3 items-center">
                 <Link
                     href="/"
-                    className="justify-self-start text-xl font-semibold transition-colors text-white hover:text-yellow-400"
+                    className="justify-self-start text-lg md:text-xl font-semibold tracking-tight transition-colors text-white hover:text-purple-300"
                 >
-                    <span className="hidden md:inline">CineView</span>
+                    Cine<span className="text-purple-400">View</span>
                 </Link>
 
                 <div className="justify-self-center">
@@ -118,7 +118,7 @@ export default function Header() {
                 absolute left-0 top-full w-full
                 z-50
                 border-t border-neutral-800
-                bg-gray-950/95 backdrop-blur-xl
+                bg-gray-950 shadow-[0_24px_60px_rgba(0,0,0,0.7)]
             "
                     >
                         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-2 text-sm text-gray-200">

@@ -4,6 +4,7 @@ import './globals.css';
 import ReactQueryProvider from '@/providers/ReactQueryProvider';
 import Header from '@/components/Header';
 import ScrollToTop from '@/components/ScrollToTop';
+import Footer from '@/components/Footer';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import SearchHotkey from '@/components/SearchHotkey';
 import { Analytics } from '@vercel/analytics/next';
@@ -66,6 +67,7 @@ export default function RootLayout({
                 <main className="flex-1">
                     <ReactQueryProvider>{children}</ReactQueryProvider>
                 </main>
+                <Footer />
             </body>
         </html>
     );

@@ -4,6 +4,7 @@ import { getPersonalDetail } from '@/services/personalDetail';
 import React from 'react';
 import { Metadata } from 'next';
 import MovieCard from '@/components/MovieCard';
+import ExpandableText from '@/components/ExpandableText';
 
 interface Props {
     params: Promise<{ id: string }>;
@@ -95,9 +96,10 @@ export default async function PersonDetailPage({ params }: Props) {
                     </div>
 
                     {person.biography && (
-                        <div className="mt-6 text-gray-300 leading-relaxed">
-                            <p>{person.biography}</p>
-                        </div>
+                        <ExpandableText
+                            text={person.biography}
+                            className="mt-6 w-full max-w-3xl text-left text-gray-300"
+                        />
                     )}
                 </div>
 

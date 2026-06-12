@@ -317,9 +317,7 @@ export default function DiscoverAiPage() {
                         )}
 
                         {recommendations.length > 0 && (
-                            <div
-                                className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                            >
+                            <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
                                 <AnimatePresence>
                                     {recommendations.map(movie => {
                                         const posterUrl = movie.poster_path
@@ -333,38 +331,35 @@ export default function DiscoverAiPage() {
                                         return (
                                             <div
                                                 key={movie.title + movie.tmdb_id}
-                                                className="group relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_70px_rgba(0,0,0,0.55)] overflow-hidden flex flex-col"
+                                                className="group relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_70px_rgba(0,0,0,0.55)] overflow-hidden flex gap-4 p-4"
                                             >
-                                                {posterUrl ? (
-                                                    <Link
-                                                        href={`/detail/movie/${movie.tmdb_id}`}
-                                                        className="relative h-64 w-full overflow-hidden"
-                                                    >
-                                                        <Image
-                                                            src={posterUrl}
-                                                            alt={movie.title}
-                                                            fill
-                                                            className="object-cover transition duration-500 group-hover:scale-105"
-                                                            sizes="
-                                                            (max-width: 480px) 45vw,
-                                                            (max-width: 768px) 33vw,
-                                                            (max-width: 1200px) 25vw,
-                                                            20vw
-                        "
-                                                        />
-                                                    </Link>
-                                                ) : (
-                                                    <div className="h-64 w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-gray-500">
-                                                        No poster available
-                                                    </div>
-                                                )}
-                                                <div className="p-5 space-y-3 flex-1 flex flex-col">
+                                                <div className="w-28 sm:w-32 flex-shrink-0">
+                                                    {posterUrl ? (
+                                                        <Link
+                                                            href={`/detail/movie/${movie.tmdb_id}`}
+                                                            className="relative block aspect-[2/3] w-full overflow-hidden rounded-xl"
+                                                        >
+                                                            <Image
+                                                                src={posterUrl}
+                                                                alt={movie.title}
+                                                                fill
+                                                                className="object-cover transition duration-500 group-hover:scale-105"
+                                                                sizes="128px"
+                                                            />
+                                                        </Link>
+                                                    ) : (
+                                                        <div className="aspect-[2/3] w-full rounded-xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-center text-xs text-gray-500 px-2">
+                                                            No poster
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 flex flex-col space-y-2 min-w-0">
                                                     <div className="flex items-start justify-between gap-3">
-                                                        <div className="space-y-1">
+                                                        <div>
                                                             <Link
                                                                 href={`/detail/movie/${movie.tmdb_id}`}
                                                             >
-                                                                <h3 className="text-xl font-semibold text-white">
+                                                                <h3 className="text-lg font-semibold text-white leading-snug">
                                                                     {movie.title}
                                                                 </h3>
                                                             </Link>
@@ -375,20 +370,15 @@ export default function DiscoverAiPage() {
                                                             )}
                                                         </div>
                                                         {rating && (
-                                                            <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-3 py-1 text-xs font-semibold text-purple-100 shadow-[0_8px_20px_rgba(124,58,237,0.25)]">
-                                                                ⭐ {rating}
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-2.5 py-1 text-xs font-semibold text-purple-100 shadow-[0_8px_20px_rgba(124,58,237,0.25)] whitespace-nowrap">
+                                                                ★ {rating}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    {movie.overview && (
-                                                        <p className="text-gray-300/90 text-sm leading-relaxed line-clamp-3">
-                                                            {movie.overview}
-                                                        </p>
-                                                    )}
-                                                    <p className="text-gray-200 text-sm leading-relaxed flex-1">
-                                                        {movie.reason}
+                                                    <p className="text-gray-200 text-sm leading-relaxed flex-1 line-clamp-4">
+                                                        {movie.reason || movie.overview}
                                                     </p>
-                                                    <div className="flex items-center justify-between pt-2">
+                                                    <div className="flex items-center justify-between pt-1">
                                                         {movie.tmdb_id ? (
                                                             <Link
                                                                 href={`/detail/movie/${movie.tmdb_id}`}

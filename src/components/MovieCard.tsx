@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MovieItem } from '@/types/dashboard';
+import Rating from '@/components/Rating';
 
 interface MovieProps {
     movie: MovieItem;
@@ -14,15 +15,13 @@ interface MovieProps {
 const MovieCard: React.FC<MovieProps> = ({ movie, type = 'movie', priority = false }) => {
     const title = movie.title || movie.name || movie.original_name;
     const linkHref = `/detail/${type}/${movie.id}`;
+    const releaseDate = movie.release_date || movie.first_air_date;
+    const year = releaseDate ? new Date(releaseDate).getFullYear() : null;
 
     return (
-        <Link
-            href={linkHref}
-            className="group aspect-[2/3] relative overflow-hidden rounded-2xl bg-neutral-800 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
-            prefetch
-        >
+        <Link href={linkHref} className="group flex flex-col cursor-pointer" prefetch>
             {/* Poster */}
-            <div className="relative w-full h-full">
+            <div className="aspect-[2/3] relative overflow-hidden rounded-2xl bg-neutral-800 shadow-md group-hover:shadow-lg group-hover:shadow-purple-500/10 transition-all duration-300">
                 {movie.poster_path ? (
                     <Image
                         priority={priority}
@@ -46,10 +45,15 @@ const MovieCard: React.FC<MovieProps> = ({ movie, type = 'movie', priority = fal
                 )}
             </div>
 
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                <h3 className="text-lg font-semibold truncate">{title}</h3>
-                <p className="text-sm text-neutral-300 mt-1">⭐ {movie.vote_average.toFixed(1)}</p>
+            {/* Caption — always visible, works on touch devices too */}
+            <div className="mt-2 px-0.5">
+                <h3 className="text-sm font-medium text-gray-100 truncate group-hover:text-white transition-colors">
+                    {title}
+                </h3>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-neutral-400">
+                    {year && <span>{year}</span>}
+                    <Rating value={movie.vote_average} />
+                </div>
             </div>
         </Link>
     );

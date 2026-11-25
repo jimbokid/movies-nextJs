@@ -1,5 +1,7 @@
+import { cache } from 'react';
 import Image from 'next/image';
-import { MovieDetail } from '@/services/movie';
+import { notFound } from 'next/navigation';
+import { MovieDetail, TmdbNotFoundError } from '@/services/movie';
 import { MovieDetailPayload } from '@/types/movie';
 import Link from 'next/link';
 import MovieCard from '@/components/MovieCard';
@@ -17,10 +19,36 @@ interface MovieDetailPageProps {
     }>;
 }
 
+// Render each title on first request, then serve it from Vercel's cache (ISR) for a day,
+// so repeat hits (including crawlers) don't re-run the function or call TMDB again.
+export const revalidate = 86400;
+
+export async function generateStaticParams() {
+    return [];
+}
+
+const VALID_TYPES = new Set(['movie', 'tv']);
+
+// cache() shares one TMDB round-trip between generateMetadata and the page render.
+const loadMovieDetail = cache(async (id: string, type: string): Promise<MovieDetailPayload> => {
+    if (!VALID_TYPES.has(type) || !/^\d+$/.test(id)) {
+        notFound();
+    }
+
+    try {
+        return await MovieDetail.getMovieDetail(id, type);
+    } catch (error) {
+        if (error instanceof TmdbNotFoundError) {
+            notFound();
+        }
+        throw error;
+    }
+});
+
 export async function generateMetadata({ params }: MovieDetailPageProps): Promise<Metadata> {
     const { id, type } = await params;
 
-    const data: MovieDetailPayload = await MovieDetail.getMovieDetail(id, type);
+    const data: MovieDetailPayload = await loadMovieDetail(id, type);
 
     const movie = data.data;
 
@@ -59,7 +87,7 @@ export async function generateMetadata({ params }: MovieDetailPageProps): Promis
 export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
     const { id, type } = await params;
 
-    const data: MovieDetailPayload = await MovieDetail.getMovieDetail(id, type);
+    const data: MovieDetailPayload = await loadMovieDetail(id, type);
 
     const movie = data.data;
     const curatorHref = curatorUrlFromMovie({ from: 'movie' });
@@ -78,6 +106,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                     alt={movie.title}
                     fill
                     priority
+                    sizes="100vw"
                     className="object-cover opacity-40"
                 />
                 <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-gray-950/80 via-gray-950/30 to-transparent px-4 py-10">
@@ -149,6 +178,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                                                 src={`https://image.tmdb.org/t/p/w500${actor.profile_path}`}
                                                 alt={actor.name}
                                                 fill
+                                                sizes="128px"
                                                 className="object-cover"
                                             />
                                         ) : (

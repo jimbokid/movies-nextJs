@@ -3,6 +3,14 @@ import { API_PATH, API_TOKEN, LANGUAGE } from '@/constants/appConstants';
 import { genreGroup } from '@/utils/movieDetailHelpers';
 import { Genres, MovieDetailPayload } from '@/types/movie';
 
+/** Thrown when TMDB has no title for the given id/type, so pages can render a 404. */
+export class TmdbNotFoundError extends Error {
+    constructor(path: string) {
+        super(`TMDB resource not found: ${path}`);
+        this.name = 'TmdbNotFoundError';
+    }
+}
+
 export const MovieDetail = {
     async getMovieDetail(id: string, type: string): Promise<MovieDetailPayload> {
         const get = <T>(path: string): Promise<T> =>
@@ -18,6 +26,9 @@ export const MovieDetail = {
         // Only the main movie request is fatal — secondary sections degrade to empty.
         const [movie, similar, credits, images, genre, videos, keywords] = await Promise.all([
             get<MovieDetailPayload['data']>(`${type}/${id}`).catch(error => {
+                if (axios.isAxiosError(error) && error.response?.status === 404) {
+                    throw new TmdbNotFoundError(`${type}/${id}`);
+                }
                 console.error('Failed to fetch movie detail:', error?.message ?? error);
                 throw new Error('Movie detail fetch failed');
             }),

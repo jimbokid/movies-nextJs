@@ -2,14 +2,10 @@ import type {NextConfig} from "next";
 
 const nextConfig: NextConfig = {
     images: {
-        remotePatterns: [
-            {
-                protocol: "https",
-                hostname: "image.tmdb.org",
-                port: "",
-                pathname: "/t/p/**",
-            },
-        ],
+        // TMDB already hosts resized copies, so pick one directly instead of using
+        // Vercel Image Optimization (see src/lib/tmdbImageLoader.ts).
+        loader: "custom",
+        loaderFile: "./src/lib/tmdbImageLoader.ts",
     },
     /* config options here */
 };

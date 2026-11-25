@@ -1,7 +1,9 @@
 import Image from 'next/image';
 import moment from 'moment';
+import axios from 'axios';
+import { notFound } from 'next/navigation';
 import { getPersonalDetail } from '@/services/personalDetail';
-import React from 'react';
+import React, { cache } from 'react';
 import { Metadata } from 'next';
 import MovieCard from '@/components/MovieCard';
 import ExpandableText from '@/components/ExpandableText';
@@ -10,9 +12,32 @@ interface Props {
     params: Promise<{ id: string }>;
 }
 
+// Same caching as the movie detail page: render on first request, serve from cache for a day.
+export const revalidate = 86400;
+
+export async function generateStaticParams() {
+    return [];
+}
+
+// cache() shares one TMDB round-trip between generateMetadata and the page render.
+const loadPerson = cache(async (id: string) => {
+    if (!/^\d+$/.test(id)) {
+        notFound();
+    }
+
+    try {
+        return await getPersonalDetail(id);
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            notFound();
+        }
+        throw error;
+    }
+});
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
-    const data = await getPersonalDetail(id);
+    const data = await loadPerson(id);
 
     const { data: person } = data;
 
@@ -51,7 +76,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PersonDetailPage({ params }: Props) {
     const { id } = await params;
 
-    const data = await getPersonalDetail(id);
+    const data = await loadPerson(id);
 
     if (!data) {
         return (
@@ -73,6 +98,7 @@ export default async function PersonDetailPage({ params }: Props) {
                                 src={`https://image.tmdb.org/t/p/w400${person.profile_path}`}
                                 alt={person.name}
                                 fill
+                                sizes="192px"
                                 className="object-cover"
                             />
                         ) : (
